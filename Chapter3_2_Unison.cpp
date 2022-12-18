@@ -567,7 +567,7 @@ private:
 
 void Main()
 {
-	auto midiDataOpt = LoadMidi(U"だから僕は音楽を辞めた off.mid");
+	auto midiDataOpt = LoadMidi(U"example/midi/test.mid");
 	if (!midiDataOpt)
 	{
 		// ファイルが見つからない or 読み込みエラー
