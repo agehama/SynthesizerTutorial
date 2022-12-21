@@ -347,10 +347,10 @@ https://qiita.com/agehama_/items/7da430491400e9a2b6a7
 +               WaveSample sample(0, 0);
 +               for (auto& [noteNumber, noteState] : m_noteState)
 +               {
-+                       const auto amplitude = noteState.m_envelope.currentLevel();
++                       const auto envLevel = noteState.m_envelope.currentLevel();
 +                       const auto frequency = NoteNumberToFrequency(noteNumber);
 +
-+                       const auto w = static_cast<float>(sin(Math::TwoPiF * frequency * m_time) * amplitude);
++                       const auto w = static_cast<float>(sin(Math::TwoPiF * frequency * m_time) * envLevel);
 +                       sample.left += w;
 +                       sample.right += w;
 +               }
@@ -515,11 +515,11 @@ https://qiita.com/agehama_/items/7da430491400e9a2b6a7
                 WaveSample sample(0, 0);
                 for (auto& [noteNumber, noteState] : m_noteState)
                 {
--                       const auto amplitude = noteState.m_envelope.currentLevel();
-+                       const auto amplitude = noteState.m_envelope.currentLevel() * noteState.m_velocity;
+-                       const auto envLevel = noteState.m_envelope.currentLevel();
++                       const auto envLevel = noteState.m_envelope.currentLevel() * noteState.m_velocity;
                         const auto frequency = NoteNumberToFrequency(noteNumber);
 
-                        const auto w = static_cast<float>(sin(Math::TwoPiF * frequency * m_time) * amplitude);
+                        const auto w = static_cast<float>(sin(Math::TwoPiF * frequency * m_time) * envLevel);
 @@ -152,9 +155,11 @@ public:
                 return sample * static_cast<float>(m_amplitude);
         }
