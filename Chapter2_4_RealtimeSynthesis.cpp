@@ -312,13 +312,13 @@ public:
 		WaveSample sample(0, 0);
 		for (auto& [noteNumber, noteState] : m_noteState)
 		{
-			const auto amplitude = noteState.m_envelope.currentLevel() * noteState.m_velocity;
+			const auto envLevel = noteState.m_envelope.currentLevel() * noteState.m_velocity;
 			const auto frequency = NoteNumberToFrequency(noteNumber);
 
 			const auto osc = OscWaveTables[m_oscIndex].get(noteState.m_phase, frequency);
 			noteState.m_phase += DeltaT * frequency * Math::TwoPiF;
 
-			const auto w = static_cast<float>(osc * amplitude);
+			const auto w = static_cast<float>(osc * envLevel);
 			sample.left += w;
 			sample.right += w;
 		}

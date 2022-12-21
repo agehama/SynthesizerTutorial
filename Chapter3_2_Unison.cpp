@@ -356,7 +356,7 @@ public:
 
 		for (auto& [noteNumber, noteState] : m_noteState)
 		{
-			const auto amplitude = noteState.m_envelope.currentLevel() * noteState.m_velocity;
+			const auto envLevel = noteState.m_envelope.currentLevel() * noteState.m_velocity;
 			const auto frequency = NoteNumberToFrequency(noteNumber) * pitch;
 
 			for (int d = 0; d < m_unisonCount; ++d)
@@ -371,7 +371,7 @@ public:
 					phase -= Math::TwoPi;
 				}
 
-				const auto w = static_cast<float>(osc * amplitude);
+				const auto w = static_cast<float>(osc * envLevel);
 				sample.left += w * m_unisonPan[d].x;
 				sample.right += w * m_unisonPan[d].y;
 			}

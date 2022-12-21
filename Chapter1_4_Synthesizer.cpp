@@ -139,10 +139,10 @@ public:
 		WaveSample sample(0, 0);
 		for (auto& [noteNumber, noteState] : m_noteState)
 		{
-			const auto amplitude = noteState.m_envelope.currentLevel();
+			const auto envLevel = noteState.m_envelope.currentLevel();
 			const auto frequency = NoteNumberToFrequency(noteNumber);
 
-			const auto w = static_cast<float>(sin(Math::TwoPiF * frequency * m_time) * amplitude);
+			const auto w = static_cast<float>(sin(Math::TwoPiF * frequency * m_time) * envLevel);
 			sample.left += w;
 			sample.right += w;
 		}
