@@ -243,11 +243,11 @@ https://qiita.com/agehama_/items/7da430491400e9a2b6a7
 +       return 440.0f * pow(2.0f, (d - 69) / 12.0f);
 +}
 +
-+Wave RenderWave(uint32 seconds, double amplitude, const Array<float>& frequencies, const ADSRConfig& adsr)
++Wave RenderWave(uint32 seconds, double amplitude, const Array<int8_t>& noteNumbers, const ADSRConfig& adsr)
  {
         const auto lengthOfSamples = seconds * Wave::DefaultSampleRate;
 
-@@ -121,14 +126,22 @@ Wave RenderWave(uint32 seconds, double amplitude, double frequency, const ADSRCo
+@@ -121,14 +126,23 @@ Wave RenderWave(uint32 seconds, double amplitude, double frequency, const ADSRCo
 
         const float deltaT = 1.0f / Wave::DefaultSampleRate;
         float time = 0;
@@ -263,8 +263,9 @@ https://qiita.com/agehama_/items/7da430491400e9a2b6a7
 +
 +               // 和音の各波形を加算合成する
 +               double w = 0;
-+               for (auto freq : frequencies)
++               for (auto note : noteNumbers)
 +               {
++                       const auto freq = NoteNumberToFrequency(note);
 +                       w += sin(Math::TwoPiF * freq * time)
 +                               * amplitude * envelope.currentLevel();
 +               }
@@ -272,7 +273,7 @@ https://qiita.com/agehama_/items/7da430491400e9a2b6a7
                 wave[i].left = wave[i].right = static_cast<float>(w);
                 time += deltaT;
                 envelope.update(adsr, deltaT);
-@@ -140,7 +153,6 @@ Wave RenderWave(uint32 seconds, double amplitude, double frequency, const ADSRCo
+@@ -140,7 +154,6 @@ Wave RenderWave(uint32 seconds, double amplitude, double frequency, const ADSRCo
  void Main()
  {
         double amplitude = 0.2;
@@ -280,19 +281,19 @@ https://qiita.com/agehama_/items/7da430491400e9a2b6a7
 
         uint32 seconds = 3;
 
-@@ -150,20 +162,26 @@ void Main()
+@@ -150,20 +163,26 @@ void Main()
         adsr.sustainLevel = 0.8;
         adsr.releaseTime = 0.5;
 
 -       Audio audio(RenderWave(seconds, amplitude, frequency, adsr));
-+       const Array<float> frequencies =
++       const Array<int8_t> noteNumbers =
 +       {
-+               NoteNumberToFrequency(60), // C_4
-+               NoteNumberToFrequency(64), // E_4
-+               NoteNumberToFrequency(67), // G_4
++               60, // C_4
++               64, // E_4
++               67, // G_4
 +       };
 +
-+       Audio audio(RenderWave(seconds, amplitude, frequencies, adsr));
++       Audio audio(RenderWave(seconds, amplitude, noteNumbers, adsr));
         audio.play();
 
         while (System::Update())
@@ -306,7 +307,7 @@ https://qiita.com/agehama_/items/7da430491400e9a2b6a7
                 if (SimpleGUI::Button(U"波形を再生成", Vec2{ pos.x, pos.y += SliderHeight }))
                 {
 -                       audio = Audio(RenderWave(seconds, amplitude, frequency, adsr));
-+                       audio = Audio(RenderWave(seconds, amplitude, frequencies, adsr));
++                       audio = Audio(RenderWave(seconds, amplitude, noteNumbers, adsr));
                         audio.play();
                 }
         }
