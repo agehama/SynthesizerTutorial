@@ -112,7 +112,7 @@ float NoteNumberToFrequency(int8_t d)
 	return 440.0f * pow(2.0f, (d - 69) / 12.0f);
 }
 
-Wave RenderWave(uint32 seconds, double amplitude, const Array<float>& frequencies, const ADSRConfig& adsr)
+Wave RenderWave(uint32 seconds, double amplitude, const Array<int8_t>& noteNumbers, const ADSRConfig& adsr)
 {
 	const auto lengthOfSamples = seconds * Wave::DefaultSampleRate;
 
@@ -136,8 +136,9 @@ Wave RenderWave(uint32 seconds, double amplitude, const Array<float>& frequencie
 
 		// 和音の各波形を加算合成する
 		double w = 0;
-		for (auto freq : frequencies)
+		for (auto note : noteNumbers)
 		{
+			const auto freq = NoteNumberToFrequency(note);
 			w += sin(Math::TwoPiF * freq * time)
 				* amplitude * envelope.currentLevel();
 		}
@@ -162,14 +163,14 @@ void Main()
 	adsr.sustainLevel = 0.8;
 	adsr.releaseTime = 0.5;
 
-	const Array<float> frequencies =
+	const Array<int8_t> noteNumbers =
 	{
-		NoteNumberToFrequency(60), // C_4
-		NoteNumberToFrequency(64), // E_4
-		NoteNumberToFrequency(67), // G_4
+		60, // C_4
+		64, // E_4
+		67, // G_4
 	};
 
-	Audio audio(RenderWave(seconds, amplitude, frequencies, adsr));
+	Audio audio(RenderWave(seconds, amplitude, noteNumbers, adsr));
 	audio.play();
 
 	while (System::Update())
@@ -181,7 +182,7 @@ void Main()
 
 		if (SimpleGUI::Button(U"波形を再生成", Vec2{ pos.x, pos.y += SliderHeight }))
 		{
-			audio = Audio(RenderWave(seconds, amplitude, frequencies, adsr));
+			audio = Audio(RenderWave(seconds, amplitude, noteNumbers, adsr));
 			audio.play();
 		}
 	}
