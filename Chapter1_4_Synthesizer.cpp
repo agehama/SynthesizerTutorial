@@ -197,14 +197,14 @@ private:
 	double m_time = 0;
 };
 
-void RenderWave(Wave& wave, Synthesizer& synth)
+Wave RenderWave(uint32 seconds, Synthesizer& synth)
 {
-	const auto lengthOfSamples = 3 * wave.sampleRate();
+	const auto lengthOfSamples = seconds * Wave::DefaultSampleRate;
 
-	// 1.5秒のところでキー入力が離された想定
+	Wave wave(lengthOfSamples);
+
+	// 半分経過したところでノートオフ
 	const auto noteOffSample = lengthOfSamples / 2;
-
-	wave.resize(lengthOfSamples, WaveSample::Zero());
 
 	synth.noteOn(60); // C_4
 	synth.noteOn(64); // E_4
@@ -221,16 +221,17 @@ void RenderWave(Wave& wave, Synthesizer& synth)
 
 		wave[i] = synth.renderSample();
 	}
+
+	return wave;
 }
 
 void Main()
 {
+	uint32 seconds = 3;
+
 	Synthesizer synth;
 
-	Wave wave;
-	RenderWave(wave, synth);
-
-	Audio audio(wave);
+	Audio audio(RenderWave(seconds, synth));
 	audio.play();
 
 	while (System::Update())
@@ -243,8 +244,7 @@ void Main()
 		{
 			synth.clear();
 
-			RenderWave(wave, synth);
-			audio = Audio(wave);
+			audio = Audio(RenderWave(seconds, synth));
 			audio.play();
 		}
 	}

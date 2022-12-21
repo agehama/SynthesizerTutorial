@@ -112,16 +112,17 @@ float NoteNumberToFrequency(int8_t d)
 	return 440.0f * pow(2.0f, (d - 69) / 12.0f);
 }
 
-void RenderWave(Wave& wave, double amplitude, const Array<float>& frequencies, const ADSRConfig& adsr)
+Wave RenderWave(uint32 seconds, double amplitude, const Array<float>& frequencies, const ADSRConfig& adsr)
 {
-	const auto lengthOfSamples = 3 * wave.sampleRate();
+	const auto lengthOfSamples = seconds * Wave::DefaultSampleRate;
 
-	// 1.5秒のところでキー入力が離された想定
-	const auto noteOffSample = lengthOfSamples / 2;
+	Wave wave(lengthOfSamples);
 
-	wave.resize(lengthOfSamples, WaveSample::Zero());
-
+	// 0サンプル目でノートオン
 	EnvGenerator envelope;
+
+	// 半分経過したところでノートオフ
+	const auto noteOffSample = lengthOfSamples / 2;
 
 	const float deltaT = 1.0f / Wave::DefaultSampleRate;
 	float time = 0;
@@ -133,6 +134,7 @@ void RenderWave(Wave& wave, double amplitude, const Array<float>& frequencies, c
 			envelope.noteOff();
 		}
 
+		// 和音の各波形を加算合成する
 		double w = 0;
 		for (auto freq : frequencies)
 		{
@@ -144,11 +146,15 @@ void RenderWave(Wave& wave, double amplitude, const Array<float>& frequencies, c
 		time += deltaT;
 		envelope.update(adsr, deltaT);
 	}
+
+	return wave;
 }
 
 void Main()
 {
 	double amplitude = 0.2;
+
+	uint32 seconds = 3;
 
 	ADSRConfig adsr;
 	adsr.attackTime = 0.1;
@@ -163,10 +169,7 @@ void Main()
 		NoteNumberToFrequency(67), // G_4
 	};
 
-	Wave wave;
-	RenderWave(wave, amplitude, frequencies, adsr);
-
-	Audio audio(wave);
+	Audio audio(RenderWave(seconds, amplitude, frequencies, adsr));
 	audio.play();
 
 	while (System::Update())
@@ -178,8 +181,7 @@ void Main()
 
 		if (SimpleGUI::Button(U"波形を再生成", Vec2{ pos.x, pos.y += SliderHeight }))
 		{
-			RenderWave(wave, amplitude, frequencies, adsr);
-			audio = Audio(wave);
+			audio = Audio(RenderWave(seconds, amplitude, frequencies, adsr));
 			audio.play();
 		}
 	}

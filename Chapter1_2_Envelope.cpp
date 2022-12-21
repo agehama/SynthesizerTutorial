@@ -107,16 +107,17 @@ private:
 	double m_currentLevel = 0; // 現在のレベル [0, 1]
 };
 
-void RenderWave(Wave& wave, double amplitude, double frequency, const ADSRConfig& adsr)
+Wave RenderWave(uint32 seconds, double amplitude, double frequency, const ADSRConfig& adsr)
 {
-	const auto lengthOfSamples = 3 * wave.sampleRate();
+	const auto lengthOfSamples = seconds * Wave::DefaultSampleRate;
 
-	// 1.5秒のところでキー入力が離された想定
-	const auto noteOffSample = lengthOfSamples / 2;
+	Wave wave(lengthOfSamples);
 
-	wave.resize(lengthOfSamples, WaveSample::Zero());
-
+	// 0サンプル目でノートオン
 	EnvGenerator envelope;
+
+	// 半分経過したところでノートオフ
+	const auto noteOffSample = lengthOfSamples / 2;
 
 	const float deltaT = 1.0f / Wave::DefaultSampleRate;
 	float time = 0;
@@ -132,6 +133,8 @@ void RenderWave(Wave& wave, double amplitude, double frequency, const ADSRConfig
 		time += deltaT;
 		envelope.update(adsr, deltaT);
 	}
+
+	return wave;
 }
 
 void Main()
@@ -139,16 +142,15 @@ void Main()
 	double amplitude = 0.2;
 	double frequency = 440.0;
 
+	uint32 seconds = 3;
+
 	ADSRConfig adsr;
 	adsr.attackTime = 0.1;
 	adsr.decayTime = 0.1;
 	adsr.sustainLevel = 0.8;
 	adsr.releaseTime = 0.5;
 
-	Wave wave;
-	RenderWave(wave, amplitude, frequency, adsr);
-
-	Audio audio(wave);
+	Audio audio(RenderWave(seconds, amplitude, frequency, adsr));
 	audio.play();
 
 	while (System::Update())
@@ -161,8 +163,7 @@ void Main()
 
 		if (SimpleGUI::Button(U"波形を再生成", Vec2{ pos.x, pos.y += SliderHeight }))
 		{
-			RenderWave(wave, amplitude, frequency, adsr);
-			audio = Audio(wave);
+			audio = Audio(RenderWave(seconds, amplitude, frequency, adsr));
 			audio.play();
 		}
 	}

@@ -4,11 +4,11 @@ const auto SliderHeight = 36;
 const auto SliderWidth = 400;
 const auto LabelWidth = 200;
 
-void RenderWave(Wave& wave, double amplitude, double frequency)
+Wave RenderWave(uint32 seconds, double amplitude, double frequency)
 {
-	const auto lengthOfSamples = 3 * wave.sampleRate();
+	const auto lengthOfSamples = seconds * Wave::DefaultSampleRate;
 
-	wave.resize(lengthOfSamples, WaveSample::Zero());
+	Wave wave(lengthOfSamples);
 
 	for (uint32 i = 0; i < lengthOfSamples; ++i)
 	{
@@ -16,6 +16,8 @@ void RenderWave(Wave& wave, double amplitude, double frequency)
 		const double w = sin(Math::TwoPiF * frequency * sec) * amplitude;
 		wave[i].left = wave[i].right = static_cast<float>(w);
 	}
+
+	return wave;
 }
 
 void Main()
@@ -23,10 +25,9 @@ void Main()
 	double amplitude = 0.2;
 	double frequency = 440.0;
 
-	Wave wave;
-	RenderWave(wave, amplitude, frequency);
+	uint32 seconds = 3;
 
-	Audio audio(wave);
+	Audio audio(RenderWave(seconds, amplitude, frequency));
 	audio.play();
 
 	while (System::Update())
@@ -37,8 +38,7 @@ void Main()
 
 		if (SimpleGUI::Button(U"波形を再生成", Vec2{ pos.x, pos.y += SliderHeight }))
 		{
-			RenderWave(wave, amplitude, frequency);
-			audio = Audio(wave);
+			audio = Audio(RenderWave(seconds, amplitude, frequency));
 			audio.play();
 		}
 	}

@@ -165,31 +165,31 @@ public:
 	bool isPercussionTrack() const { return m_channel == 9; }
 
 	template<class T>
-	std::multimap<int64, T> getRangeNoteEvent(int64 tickBegin, int64 tickEnd) const
+	std::multimap<int64, T> getMIDIEvent(int64 tickBegin, int64 tickEnd) const
 	{
 		if constexpr (std::is_same_v<NoteOnEvent, T>)
 		{
-			return filterNoteEvent(m_noteOnEvents, tickBegin, tickEnd);
+			return filterMIDIEvent(m_noteOnEvents, tickBegin, tickEnd);
 		}
 		else if constexpr (std::is_same_v<NoteOffEvent, T>)
 		{
-			return filterNoteEvent(m_noteOffEvents, tickBegin, tickEnd);
+			return filterMIDIEvent(m_noteOffEvents, tickBegin, tickEnd);
 		}
 		else if constexpr (std::is_same_v<PolyphonicKeyPressureEvent, T>)
 		{
-			return filterNoteEvent(m_polyphonicKeyPressureEvents, tickBegin, tickEnd);
+			return filterMIDIEvent(m_polyphonicKeyPressureEvents, tickBegin, tickEnd);
 		}
 		else if constexpr (std::is_same_v<ControlChangeEvent, T>)
 		{
-			return filterNoteEvent(m_controlChangeEvent, tickBegin, tickEnd);
+			return filterMIDIEvent(m_controlChangeEvent, tickBegin, tickEnd);
 		}
 		else if constexpr (std::is_same_v<ProgramChangeEvent, T>)
 		{
-			return filterNoteEvent(m_programChangeEvent, tickBegin, tickEnd);
+			return filterMIDIEvent(m_programChangeEvent, tickBegin, tickEnd);
 		}
 		else if constexpr (std::is_same_v<PitchBendEvent, T>)
 		{
-			return filterNoteEvent(m_pitchBendEvent, tickBegin, tickEnd);
+			return filterMIDIEvent(m_pitchBendEvent, tickBegin, tickEnd);
 		}
 		else
 		{
@@ -202,7 +202,7 @@ private:
 	friend class MidiData;
 
 	template<class T>
-	std::multimap<int64, T> filterNoteEvent(const std::multimap<int64, T>& eventList, int64 tickBegin, int64 tickEnd) const
+	std::multimap<int64, T> filterMIDIEvent(const std::multimap<int64, T>& eventList, int64 tickBegin, int64 tickEnd) const
 	{
 		std::multimap<int64, T> result;
 		auto itBegin = eventList.lower_bound(tickBegin);
@@ -415,7 +415,7 @@ void TrackData::init()
 	}
 }
 
-void Measure::outputLog(TextWriter& writer) const
+void Measure::outputLog() const
 {
 	Logger << U"measure: " << measureIndex;
 	Logger << U"tick: " << globalTick;

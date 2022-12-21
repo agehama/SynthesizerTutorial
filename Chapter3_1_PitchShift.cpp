@@ -439,14 +439,14 @@ public:
 				}
 
 				// 発生したノートオンイベントをシンセに登録
-				const auto noteOnEvents = track.getRangeNoteEvent<NoteOnEvent>(currentTick, nextTick);
+				const auto noteOnEvents = track.getMIDIEvent<NoteOnEvent>(currentTick, nextTick);
 				for (auto& [tick, noteOn] : noteOnEvents)
 				{
 					m_synth.noteOn(noteOn.note_number, noteOn.velocity);
 				}
 
 				// 発生したノートオフイベントをシンセに登録
-				const auto noteOffEvents = track.getRangeNoteEvent<NoteOffEvent>(currentTick, nextTick);
+				const auto noteOffEvents = track.getMIDIEvent<NoteOffEvent>(currentTick, nextTick);
 				for (auto& [tick, noteOff] : noteOffEvents)
 				{
 					m_synth.noteOff(noteOff.note_number);

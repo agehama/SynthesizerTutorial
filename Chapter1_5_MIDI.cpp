@@ -202,11 +202,11 @@ private:
 	double m_time = 0;
 };
 
-void RenderWave(Wave& wave, Synthesizer& synth, const MidiData& midiData)
+Wave RenderWave(Synthesizer& synth, const MidiData& midiData)
 {
-	const auto lengthOfSamples = static_cast<int64>(ceil(midiData.lengthOfTime() * wave.sampleRate()));
+	const auto lengthOfSamples = static_cast<int64>(ceil(midiData.lengthOfTime() * Wave::DefaultSampleRate));
 
-	wave.resize(lengthOfSamples, WaveSample::Zero());
+	Wave wave(lengthOfSamples);
 
 	for (int64 i = 0; i < lengthOfSamples; ++i)
 	{
@@ -227,14 +227,14 @@ void RenderWave(Wave& wave, Synthesizer& synth, const MidiData& midiData)
 				}
 
 				// 発生したノートオンイベントをシンセに登録
-				const auto noteOnEvents = track.getRangeNoteEvent<NoteOnEvent>(currentTick, nextTick);
+				const auto noteOnEvents = track.getMIDIEvent<NoteOnEvent>(currentTick, nextTick);
 				for (auto& [tick, noteOn] : noteOnEvents)
 				{
 					synth.noteOn(noteOn.note_number, noteOn.velocity);
 				}
 
 				// 発生したノートオフイベントをシンセに登録
-				const auto noteOffEvents = track.getRangeNoteEvent<NoteOffEvent>(currentTick, nextTick);
+				const auto noteOffEvents = track.getMIDIEvent<NoteOffEvent>(currentTick, nextTick);
 				for (auto& [tick, noteOff] : noteOffEvents)
 				{
 					synth.noteOff(noteOff.note_number);
@@ -242,9 +242,11 @@ void RenderWave(Wave& wave, Synthesizer& synth, const MidiData& midiData)
 			}
 		}
 
-		// シンセを更新して現在の波形を書き込む
+		// シンセを1サンプル更新して波形を書き込む
 		wave[i] = synth.renderSample();
 	}
+
+	return wave;
 }
 
 void Main()
@@ -260,10 +262,7 @@ void Main()
 
 	Synthesizer synth;
 
-	Wave wave;
-	RenderWave(wave, synth, midiData);
-
-	Audio audio(wave);
+	Audio audio(RenderWave(synth, midiData));
 	audio.play();
 
 	while (System::Update())
@@ -277,8 +276,7 @@ void Main()
 			audio.stop();
 			synth.clear();
 
-			RenderWave(wave, synth, midiData);
-			audio = Audio(wave);
+			audio = Audio(RenderWave(synth, midiData));
 			audio.play();
 		}
 	}
