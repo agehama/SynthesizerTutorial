@@ -1599,13 +1599,16 @@ public:
 			rs.scissorEnable = true;
 			ScopedRenderStates2D ss{ rs };
 
-			const double drawScale = 1;
+			const double drawScale = 1.0;
 
 			m_renderTexture.scaled(1, drawScale).draw(leftX(), m_drawArea.bl().y - m_scrollY * drawScale);
 			m_renderTexture.scaled(1, drawScale).draw(leftX(), m_drawArea.bl().y - (m_drawArea.h + m_scrollY) * drawScale);
 		}
 
-		for (auto f : { 30,60,100,200,300,600,1000,2000,3000,6000,10000,15000,20000 })
+		const auto fs = m_freqAxis == LinearScale
+			? Array<int>::IndexedGenerate(20, [](size_t i) { return static_cast<int>(i * 1000); })
+			: Array<int>{ 30, 60, 100, 200, 300, 600, 1000, 2000, 3000, 6000, 10000, 15000, 20000 };
+		for (auto f : fs)
 		{
 			const double t = freqToAxis(f);
 			if (t < 0.0 || 1.0 < t)
@@ -1614,10 +1617,8 @@ public:
 			}
 			const double x = Math::Lerp(leftX(), rightX(), t);
 			m_font(f < 1000 ? Format(f) : Format(f / 1000, U"k")).drawAt(x, bottomY() + 20, Color(m_color, 128));
-			Line({ x, topY() }, { x, bottomY() }).draw(Color(m_color, 128));
+			Line({ x, topY() }, { x, bottomY() }).draw(Color(m_color, 64));
 		}
-
-		m_drawArea.drawFrame(1.0, m_color);
 	}
 
 	void setFreqRange(double minFreq, double maxFreq)
