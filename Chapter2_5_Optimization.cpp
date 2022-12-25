@@ -49,8 +49,6 @@ enum class WaveForm
 };
 
 static constexpr uint32 SamplingFreq = Wave::DefaultSampleRate;
-static constexpr double DeltaT = 1.0 / SamplingFreq;
-
 static constexpr uint32 MinFreq = 20;
 static constexpr uint32 MaxFreq = SamplingFreq / 2;
 
@@ -64,7 +62,8 @@ public:
 		m_wave(resolution),
 		m_xToIndex(resolution / 2_pi)
 	{
-		const int m = static_cast<int>(MaxFreq / frequency);
+		const int mSaw = static_cast<int>(MaxFreq / frequency);
+		const int mSquare = static_cast<int>((MaxFreq + frequency) / (frequency * 2.0));
 
 		for (size_t i = 0; i < resolution; ++i)
 		{
@@ -73,13 +72,13 @@ public:
 			switch (waveType)
 			{
 			case WaveForm::Saw:
-				m_wave[i] = static_cast<float>(WaveSaw(angle, m));
+				m_wave[i] = static_cast<float>(WaveSaw(angle, mSaw));
 				break;
 			case WaveForm::Sin:
-				m_wave[i] = static_cast<float>(Sin(angle));
+				m_wave[i] = static_cast<float>(sin(angle));
 				break;
 			case WaveForm::Square:
-				m_wave[i] = static_cast<float>(WaveSquare(angle, static_cast<int>((MaxFreq + frequency) / (frequency * 2.0))));
+				m_wave[i] = static_cast<float>(WaveSquare(angle, mSquare));
 				break;
 			case WaveForm::Noise:
 				m_wave[i] = static_cast<float>(WaveNoise());
@@ -305,13 +304,8 @@ float NoteNumberToFrequency(int8_t d)
 
 struct NoteState
 {
-	NoteState()
-	{
-		m_phase = Random(0.0, 2_pi);
-	}
-
-	double m_phase;
-	float m_velocity = 1.f;
+	double m_phase = 0;
+	float m_velocity;
 	EnvGenerator m_envelope;
 };
 
@@ -322,10 +316,12 @@ public:
 	// 1サンプル波形を生成して返す
 	WaveSample renderSample()
 	{
+		const auto deltaT = 1.0 / SamplingFreq;
+
 		// エンベロープの更新
 		for (auto& [noteNumber, noteState] : m_noteState)
 		{
-			noteState.m_envelope.update(m_adsr, DeltaT);
+			noteState.m_envelope.update(m_adsr, deltaT);
 		}
 
 		// リリースが終了したノートを削除する
@@ -339,7 +335,7 @@ public:
 			const auto frequency = NoteNumberToFrequency(noteNumber);
 
 			const auto osc = OscWaveTables[m_oscIndex].get(noteState.m_phase, frequency);
-			noteState.m_phase += DeltaT * frequency * Math::TwoPiF;
+			noteState.m_phase += deltaT * frequency * 2_pi;
 			if (Math::TwoPi < noteState.m_phase)
 			{
 				noteState.m_phase -= Math::TwoPi;

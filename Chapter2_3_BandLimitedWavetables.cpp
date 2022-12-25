@@ -49,8 +49,6 @@ enum class WaveForm
 };
 
 static constexpr uint32 SamplingFreq = Wave::DefaultSampleRate;
-static constexpr double DeltaT = 1.0 / SamplingFreq;
-
 static constexpr uint32 MinFreq = 20;
 static constexpr uint32 MaxFreq = SamplingFreq / 2;
 
@@ -63,7 +61,8 @@ public:
 	OscillatorWavetable(size_t resolution, double frequency, WaveForm waveType) :
 		m_wave(resolution)
 	{
-		const int m = static_cast<int>(MaxFreq / frequency);
+		const int mSaw = static_cast<int>(MaxFreq / frequency);
+		const int mSquare = static_cast<int>((MaxFreq + frequency) / (frequency * 2.0));
 
 		for (size_t i = 0; i < resolution; ++i)
 		{
@@ -72,13 +71,13 @@ public:
 			switch (waveType)
 			{
 			case WaveForm::Saw:
-				m_wave[i] = static_cast<float>(WaveSaw(angle, m));
+				m_wave[i] = static_cast<float>(WaveSaw(angle, mSaw));
 				break;
 			case WaveForm::Sin:
-				m_wave[i] = static_cast<float>(Sin(angle));
+				m_wave[i] = static_cast<float>(sin(angle));
 				break;
 			case WaveForm::Square:
-				m_wave[i] = static_cast<float>(WaveSquare(angle, static_cast<int>((MaxFreq + frequency) / (frequency * 2.0))));
+				m_wave[i] = static_cast<float>(WaveSquare(angle, mSquare));
 				break;
 			case WaveForm::Noise:
 				m_wave[i] = static_cast<float>(WaveNoise());
@@ -282,13 +281,7 @@ float NoteNumberToFrequency(int8_t d)
 
 struct NoteState
 {
-	NoteState()
-	{
-		m_phase = Random(0.0, 2_pi);
-	}
-
-	double m_phase;
-	float m_velocity = 1.f;
+	float m_velocity;
 	EnvGenerator m_envelope;
 };
 
@@ -299,10 +292,12 @@ public:
 	// 1サンプル波形を生成して返す
 	WaveSample renderSample()
 	{
+		const auto deltaT = 1.0 / SamplingFreq;
+
 		// エンベロープの更新
 		for (auto& [noteNumber, noteState] : m_noteState)
 		{
-			noteState.m_envelope.update(m_adsr, DeltaT);
+			noteState.m_envelope.update(m_adsr, deltaT);
 		}
 
 		// リリースが終了したノートを削除する
@@ -315,13 +310,13 @@ public:
 			const auto envLevel = noteState.m_envelope.currentLevel() * noteState.m_velocity;
 			const auto frequency = NoteNumberToFrequency(noteNumber);
 
-			const auto osc = OscWaveTables[m_oscIndex].get(noteState.m_phase, frequency);
-			noteState.m_phase += DeltaT * frequency * Math::TwoPiF;
-
+			const auto osc = OscWaveTables[m_oscIndex].get(m_time * frequency * 2_pi, frequency);
 			const auto w = static_cast<float>(osc * envLevel);
 			sample.left += w;
 			sample.right += w;
 		}
+
+		m_time += deltaT;
 
 		return sample * static_cast<float>(m_amplitude);
 	}
@@ -371,6 +366,8 @@ private:
 
 	double m_amplitude = 0.1;
 	int m_oscIndex = 0;
+
+	double m_time = 0;
 };
 
 Wave RenderWave(Synthesizer& synth, const MidiData& midiData)
