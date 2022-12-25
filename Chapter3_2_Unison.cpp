@@ -176,7 +176,7 @@ static Array<BandLimitedWaveTables> OscWaveTables =
 {
 	BandLimitedWaveTables(80, 2048, WaveForm::Saw),
 	BandLimitedWaveTables(1, 2048, WaveForm::Sin),
-	BandLimitedWaveTables(40, 2048, WaveForm::Square),
+	BandLimitedWaveTables(80, 2048, WaveForm::Square),
 	BandLimitedWaveTables(1, SamplingFreq, WaveForm::Noise),
 };
 
@@ -426,6 +426,11 @@ public:
 	void clear()
 	{
 		m_noteState.clear();
+	}
+
+	ADSRConfig& adsr()
+	{
+		return m_adsr;
 	}
 
 private:

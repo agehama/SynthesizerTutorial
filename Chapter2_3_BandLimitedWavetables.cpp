@@ -152,7 +152,7 @@ static Array<BandLimitedWaveTables> OscWaveTables =
 {
 	BandLimitedWaveTables(80, 2048, WaveForm::Saw),
 	BandLimitedWaveTables(1, 2048, WaveForm::Sin),
-	BandLimitedWaveTables(40, 2048, WaveForm::Square),
+	BandLimitedWaveTables(80, 2048, WaveForm::Square),
 	BandLimitedWaveTables(1, SamplingFreq, WaveForm::Noise),
 };
 
@@ -356,6 +356,11 @@ public:
 		m_noteState.clear();
 	}
 
+	ADSRConfig& adsr()
+	{
+		return m_adsr;
+	}
+
 private:
 
 	std::multimap<int8_t, NoteState> m_noteState;
@@ -417,7 +422,8 @@ Wave RenderWave(Synthesizer& synth, const MidiData& midiData)
 
 void Main()
 {
-	auto midiDataOpt = LoadMidi(U"short_loop.mid");
+	Window::Resize(1280, 720);
+	auto midiDataOpt = LoadMidi(U"C1_B8.mid");
 	if (!midiDataOpt)
 	{
 		// ファイルが見つからない or 読み込みエラー
@@ -427,17 +433,20 @@ void Main()
 	const MidiData& midiData = midiDataOpt.value();
 
 	Synthesizer synth;
+	auto& adsr = synth.adsr();
+	adsr.attackTime = 0.02;
+	adsr.releaseTime = 0.02;
 
 	Audio audio(RenderWave(synth, midiData));
 	audio.play();
 
+	AudioVisualizer visualizer(Scene::Rect().stretched(-50), AudioVisualizer::Spectrogram, AudioVisualizer::LogScale);
+	visualizer.setFreqRange(100, 20000); // [100, 20000] Hz
+	visualizer.setSplRange(-120, -60); // [-120, -60] dB
+
 	while (System::Update())
 	{
-		Vec2 pos(20, 20 - SliderHeight);
-
-		synth.updateGUI(pos);
-
-		if (SimpleGUI::Button(U"波形を再生成", Vec2{ pos.x, pos.y += SliderHeight }))
+		if (KeySpace.down())
 		{
 			audio.stop();
 			synth.clear();
@@ -445,5 +454,9 @@ void Main()
 			audio = Audio(RenderWave(synth, midiData));
 			audio.play();
 		}
+
+		visualizer.setInputWave(audio);
+		visualizer.updateFFT();
+		visualizer.draw();
 	}
 }
