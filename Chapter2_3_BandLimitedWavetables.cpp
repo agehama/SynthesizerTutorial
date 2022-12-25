@@ -109,13 +109,8 @@ public:
 
 	BandLimitedWaveTables(size_t tableCount, size_t waveResolution, WaveForm waveType)
 	{
-		init(tableCount, waveResolution, waveType);
-	}
-
-	void init(size_t tableCount, size_t waveResolution, WaveForm waveType)
-	{
 		m_waveTables.reserve(tableCount);
-		m_tablesFreqs.reserve(tableCount);
+		m_tableFreqs.reserve(tableCount);
 
 		for (size_t i = 0; i < tableCount; ++i)
 		{
@@ -123,23 +118,26 @@ public:
 			const double freq = pow(2, Math::Lerp(m_minFreqLog, m_maxFreqLog, rate));
 
 			m_waveTables.emplace_back(waveResolution, freq, waveType);
-			m_tablesFreqs.push_back(static_cast<float>(freq));
+			m_tableFreqs.push_back(static_cast<float>(freq));
 		}
-
 	}
 
 	double get(double x, double freq) const
 	{
-		const auto nextIt = std::upper_bound(m_tablesFreqs.begin(), m_tablesFreqs.end(), freq);
-		const auto nextIndex = std::distance(m_tablesFreqs.begin(), nextIt);
-		if (nextIndex == 0 || static_cast<size_t>(nextIndex) == m_tablesFreqs.size())
+		const auto nextIt = std::upper_bound(m_tableFreqs.begin(), m_tableFreqs.end(), freq);
+		const auto nextIndex = std::distance(m_tableFreqs.begin(), nextIt);
+		if (nextIndex == 0)
 		{
-			return m_waveTables[0].get(x);
+			return m_waveTables.front().get(x);
+		}
+		if (static_cast<size_t>(nextIndex) == m_tableFreqs.size())
+		{
+			return m_waveTables.back().get(x);
 		}
 
 		const auto prevIndex = nextIndex - 1;
-		const auto x01 = Math::InvLerp(m_tablesFreqs[prevIndex], m_tablesFreqs[nextIndex], freq);
-		return Math::Lerp(m_waveTables[prevIndex].get(x), m_waveTables[nextIndex].get(x), x01);
+		const auto rate = Math::InvLerp(m_tableFreqs[prevIndex], m_tableFreqs[nextIndex], freq);
+		return Math::Lerp(m_waveTables[prevIndex].get(x), m_waveTables[nextIndex].get(x), rate);
 	}
 
 private:
@@ -147,7 +145,7 @@ private:
 	double m_minFreqLog = log2(MinFreq);
 	double m_maxFreqLog = log2(MaxFreq);
 	Array<OscillatorWavetable> m_waveTables;
-	Array<float> m_tablesFreqs;
+	Array<float> m_tableFreqs;
 };
 
 static Array<BandLimitedWaveTables> OscWaveTables =
