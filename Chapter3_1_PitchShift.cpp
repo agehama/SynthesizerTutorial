@@ -304,7 +304,7 @@ float NoteNumberToFrequency(int8_t d)
 struct NoteState
 {
 	double m_phase = 0;
-	float m_velocity;
+	float m_velocity = 1.f;
 	EnvGenerator m_envelope;
 };
 
@@ -326,7 +326,7 @@ public:
 		// リリースが終了したノートを削除する
 		std::erase_if(m_noteState, [&](const auto& noteState) { return noteState.second.m_envelope.isReleased(m_adsr); });
 
-		const double pitch = pow(2.0, m_pitchShift);
+		const auto pitch = pow(2.0, m_pitchShift / 12.0);
 
 		// 入力中の波形を加算して書き込む
 		WaveSample sample(0, 0);
@@ -378,7 +378,12 @@ public:
 	{
 		SimpleGUI::Slider(U"amplitude : {:.2f}"_fmt(m_amplitude), m_amplitude, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
 		SliderInt(U"oscillator : {}"_fmt(m_oscIndex), m_oscIndex, 0, 3, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
-		SimpleGUI::Slider(U"pitchShift : {:.2f}"_fmt(m_pitchShift), m_pitchShift, -2, 2, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
+
+		if (SimpleGUI::Slider(U"pitchShift : {:.2f}"_fmt(m_pitchShift), m_pitchShift, -24.0, 24.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth)
+			 && KeyControl.pressed())
+		{
+			m_pitchShift = Math::Round(m_pitchShift);
+		}
 
 		m_adsr.updateGUI(pos);
 	}

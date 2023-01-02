@@ -232,7 +232,7 @@ float NoteNumberToFrequency(int8_t d)
 
 struct NoteState
 {
-	float m_velocity;
+	float m_velocity = 1.f;
 	EnvGenerator m_envelope;
 };
 
