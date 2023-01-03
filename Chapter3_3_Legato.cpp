@@ -189,6 +189,7 @@ struct ADSRConfig
 	double attackTime = 0.01;
 	double decayTime = 0.01;
 	double sustainLevel = 0.6;
+	double sustainResetTime = 0.05;
 	double releaseTime = 0.4;
 
 	void updateGUI(Vec2& pos)
@@ -222,6 +223,7 @@ public:
 	{
 		if (m_state != State::Release)
 		{
+			m_prevStateLevel = m_currentLevel;
 			m_elapsed = 0;
 			m_state = State::Release;
 		}
@@ -229,20 +231,22 @@ public:
 
 	void reset(State state)
 	{
+		m_prevStateLevel = m_currentLevel;
 		m_elapsed = 0;
 		m_state = state;
 	}
 
-	void update(const ADSRConfig& adsr, double dt, bool mono)
+	void update(const ADSRConfig& adsr, double dt)
 	{
 		switch (m_state)
 		{
 		case State::Attack: // 0.0 から 1.0 まで attackTime かけて増幅する
 			if (m_elapsed < adsr.attackTime)
 			{
-				m_targetLevel = m_elapsed / adsr.attackTime;
+				m_currentLevel = Math::Lerp(m_prevStateLevel, 1.0, m_elapsed / adsr.attackTime);
 				break;
 			}
+			m_prevStateLevel = m_currentLevel;
 			m_elapsed -= adsr.attackTime;
 			m_state = State::Decay;
 			[[fallthrough]]; // Decay処理にそのまま続く
@@ -250,42 +254,32 @@ public:
 		case State::Decay: // 1.0 から sustainLevel まで decayTime かけて減衰する
 			if (m_elapsed < adsr.decayTime)
 			{
-				m_targetLevel = Math::Lerp(1.0, adsr.sustainLevel, m_elapsed / adsr.decayTime);
+				m_currentLevel = Math::Lerp(m_prevStateLevel, adsr.sustainLevel, m_elapsed / adsr.decayTime);
 				break;
 			}
+			m_prevStateLevel = m_currentLevel;
 			m_elapsed -= adsr.decayTime;
 			m_state = State::Sustain;
 			[[fallthrough]]; // Sustain処理にそのまま続く
 
 		case State::Sustain: // ノートオンの間 sustainLevel を維持する
-			m_targetLevel = adsr.sustainLevel;
+			if (m_elapsed < adsr.sustainResetTime)
+			{
+				m_currentLevel = Math::Lerp(m_prevStateLevel, adsr.sustainLevel, m_elapsed / adsr.sustainResetTime);
+			}
+			else
+			{
+				m_currentLevel = adsr.sustainLevel;
+			}
 			break;
 
 		case State::Release: // sustainLevel から 0.0 まで releaseTime かけて減衰する
-			m_targetLevel = m_elapsed < adsr.releaseTime
-				? Math::Lerp(adsr.sustainLevel, 0.0, m_elapsed / adsr.releaseTime)
+			m_currentLevel = m_elapsed < adsr.releaseTime
+				? Math::Lerp(m_prevStateLevel, 0.0, m_elapsed / adsr.releaseTime)
 				: 0.0;
 			break;
 
 		default: break;
-		}
-
-		if (mono)
-		{
-			if (abs(m_targetLevel - m_realLevel) < 1.0e-4)
-			{
-				// 0割りを避けるため十分近かったらそのまま代入する
-				m_realLevel = m_targetLevel;
-			}
-			else
-			{
-				// ノイズが起きない程度の速さで近づく
-				m_realLevel = Math::Lerp(m_realLevel, m_targetLevel, 0.02);
-			}
-		}
-		else
-		{
-			m_realLevel = m_targetLevel;
 		}
 
 		m_elapsed += dt;
@@ -298,7 +292,7 @@ public:
 
 	double currentLevel() const
 	{
-		return m_realLevel;
+		return m_currentLevel;
 	}
 
 	State state() const
@@ -310,8 +304,8 @@ private:
 
 	State m_state = State::Attack;
 	double m_elapsed = 0; // ステート変更からの経過秒数
-	double m_targetLevel = 0; // 目標レベル [0, 1]
-	double m_realLevel = 0; // 実際のレベル [0, 1]
+	double m_currentLevel = 0; // 現在のレベル [0, 1]
+	double m_prevStateLevel = 0; // ステート変更前のレベル [0, 1]
 };
 
 float NoteNumberToFrequency(int8_t d)
@@ -357,7 +351,7 @@ public:
 		// エンベロープの更新
 		for (auto& [noteNumber, noteState] : m_noteState)
 		{
-			noteState.m_envelope.update(m_adsr, deltaT, m_mono);
+			noteState.m_envelope.update(m_adsr, deltaT);
 		}
 
 		// リリースが終了したノートを削除する
@@ -464,7 +458,6 @@ public:
 			SimpleGUI::CheckBox(m_mono, U"mono", pos);
 			if (m_mono)
 			{
-				const auto legatoWidth = SimpleGUI::CheckBoxRegion(U"legato", {}).w;
 				pos.x += marginWidth;
 				SimpleGUI::CheckBox(m_legato, U"legato", Vec2(pos.x, pos.y += SliderHeight));
 				pos.x -= marginWidth;
