@@ -375,7 +375,7 @@ public:
 			}
 			else
 			{
-				m_currentFreq = NoteNumberToFrequency(noteNumber);
+				m_currentFreq = targetFreq;
 			}
 
 			const auto envLevel = noteState.m_envelope.currentLevel() * noteState.m_velocity;
