@@ -364,24 +364,15 @@ public:
 
 		for (auto& [noteNumber, noteState] : m_noteState)
 		{
-			const auto targetFreq = NoteNumberToFrequency(noteNumber);
-
 			if (m_mono && m_glide)
 			{
-				const double prevFreq = m_currentFreq;
-				const double nextFreq = m_currentFreq * m_glideScale;
-				if (abs(targetFreq - nextFreq) < abs(targetFreq - prevFreq))
-				{
-					m_currentFreq = nextFreq;
-				}
-				else
-				{
-					m_currentFreq = targetFreq;
-				}
+				const double t = Saturate(m_glideElapsed / m_glideTime);
+				m_currentFreq = m_startGlideFreq * pow(m_targetScale, t);
+				m_glideElapsed += deltaT;
 			}
 			else
 			{
-				m_currentFreq = targetFreq;
+				m_currentFreq = NoteNumberToFrequency(noteNumber);
 			}
 
 			const auto envLevel = noteState.m_envelope.currentLevel() * noteState.m_velocity;
@@ -432,9 +423,10 @@ public:
 		if (m_mono && m_glide)
 		{
 			const auto targetFreq = NoteNumberToFrequency(noteNumber);
-			const auto targetScale = targetFreq / m_currentFreq;
-			const auto glideSampleCount = SamplingFreq * m_glide_time;
-			m_glideScale = pow(targetScale, 1.0 / glideSampleCount);
+
+			m_targetScale = targetFreq / m_currentFreq;
+			m_startGlideFreq = m_currentFreq;
+			m_glideElapsed = 0;
 		}
 	}
 
@@ -490,7 +482,7 @@ public:
 				pos.x += marginWidth;
 				SimpleGUI::CheckBox(m_legato, U"legato", Vec2(pos.x, pos.y += SliderHeight));
 				SimpleGUI::CheckBox(m_glide, U"glide", Vec2(pos.x + legatoWidth, pos.y));
-				SimpleGUI::Slider(U"glideTime : {:.2f}"_fmt(m_glide_time), m_glide_time, 0.0, 0.5, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth - marginWidth, SliderWidth);
+				SimpleGUI::Slider(U"glideTime : {:.2f}"_fmt(m_glideTime), m_glideTime, 0.001, 0.5, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth - marginWidth, SliderWidth);
 				pos.x -= marginWidth;
 			}
 		}
@@ -548,13 +540,15 @@ private:
 	bool m_mono = false;
 	bool m_legato = false;
 	bool m_glide = false;
-	double m_glide_time = 0.0;
+	double m_glideTime = 0.001;
 
 	std::array<float, MaxUnisonSize> m_detunePitch;
 	std::array<Float2, MaxUnisonSize> m_unisonPan;
 
 	double m_currentFreq = 440; //現在の周波数を常に保存しておく
-	double m_glideScale = 0; // グライドするときのピッチの変化量
+	double m_startGlideFreq = 440; // グライド開始時の周波数
+	double m_targetScale = 1.0; // 目標周波数 = m_startGlideFreq * m_targetScale
+	double m_glideElapsed = 0.0; // グライド開始から経過した秒数
 };
 
 class AudioRenderer : public IAudioStream
@@ -571,6 +565,12 @@ public:
 	void setMidiData(const MidiData& midiData)
 	{
 		m_midiData = midiData;
+	}
+
+	void restart()
+	{
+		m_synth.clear();
+		m_readMIDIPos = 0;
 	}
 
 	void bufferSample()
@@ -625,6 +625,21 @@ public:
 		m_synth.updateGUI(pos);
 	}
 
+	const Array<WaveSample>& buffer() const
+	{
+		return m_buffer;
+	}
+
+	size_t bufferReadPos() const
+	{
+		return m_bufferReadPos;
+	}
+
+	size_t playingMIDIPos() const
+	{
+		return m_readMIDIPos - (m_bufferWritePos - m_bufferReadPos);
+	}
+
 private:
 
 	void getAudio(float* left, float* right, const size_t samplesToWrite) override
@@ -653,22 +668,38 @@ private:
 
 void Main()
 {
-	auto midiDataOpt = LoadMidi(U"example/midi/test.mid");
+	Window::Resize(1600, 900);
+
+	auto midiDataOpt = LoadMidi(U"glide_test.mid");
 	if (!midiDataOpt)
 	{
 		// ファイルが見つからない or 読み込みエラー
 		return;
 	}
 
+	AudioVisualizer visualizer;
+	visualizer.setThresholdFromPeak(-20);
+	visualizer.setLerpStrength(0.5);
+	visualizer.setWindowType(AudioVisualizer::Hamming);
+	visualizer.setDrawScore(NoteNumber::C_3, NoteNumber::B_6);
+	visualizer.setDrawArea(Scene::Rect());
+
 	std::shared_ptr<AudioRenderer> audioStream = std::make_shared<AudioRenderer>();
 	audioStream->setMidiData(midiDataOpt.value());
 
 	bool isRunning = true;
+	bool isReset = false;
 
 	auto renderUpdate = [&]()
 	{
 		while (isRunning)
 		{
+			if (isReset)
+			{
+				audioStream->restart();
+				isReset = false;
+			}
+
 			while (!audioStream->bufferCompleted())
 			{
 				audioStream->bufferSample();
@@ -683,11 +714,45 @@ void Main()
 	Audio audio(audioStream);
 	audio.play();
 
+	bool showGUI = true;
 	while (System::Update())
 	{
 		Vec2 pos(20, 20 - SliderHeight);
 
-		audioStream->updateGUI(pos);
+		// visualizerの更新
+		{
+			auto& visualizeBuffer = visualizer.inputWave();
+			visualizeBuffer.fill(0);
+
+			const auto& streamBuffer = audioStream->buffer();
+			const auto readStartPos = audioStream->bufferReadPos();
+
+			const size_t fftInputSize = Min(visualizeBuffer.size(), streamBuffer.size());
+
+			for (size_t i = 0; i < fftInputSize; ++i)
+			{
+				const size_t inputIndex = (readStartPos + i) % streamBuffer.size();
+				visualizeBuffer[i] = (streamBuffer[inputIndex].left + streamBuffer[inputIndex].left) * 0.5f;
+			}
+
+			visualizer.updateFFT(fftInputSize);
+			visualizer.drawScore(midiDataOpt.value(), 1.0 * audioStream->playingMIDIPos() / SamplingFreq);
+		}
+
+		if (KeyG.down())
+		{
+			showGUI = !showGUI;
+		}
+
+		if (showGUI)
+		{
+			audioStream->updateGUI(pos);
+		}
+
+		if (KeySpace.down())
+		{
+			isReset = true;
+		}
 	}
 
 	isRunning = false;
