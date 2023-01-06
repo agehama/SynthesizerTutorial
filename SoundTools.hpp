@@ -1221,7 +1221,7 @@ public:
 			m_noteTimes[i].clear();
 			m_noteRangeTimes[i].clear();
 		}
-		
+
 		for (const auto& track : midiData.tracks())
 		{
 			if (track.isPercussionTrack())
@@ -1296,12 +1296,14 @@ public:
 				for (const auto& note : keyNotes)
 				{
 					// currentTimeを過ぎた表示は消す
-					const double t0 = Max(note.x, currentTime);
-					const double t1 = Max(note.y, currentTime);
+					//const double t0 = Max(note.x, currentTime);
+					//const double t1 = Max(note.y, currentTime);
+					const double t0 = note.x;
+					const double t1 = note.y;
 
 					const double x0 = Math::Map(t0, beginTime, endTime, leftX(), rightX());
 					const double x1 = Math::Map(t1, beginTime, endTime, leftX(), rightX());
-					
+
 					const int keyIndex = noteNumber - m_minNoteNumber;
 					const double currentY = bottomY() - unitHeight * (keyIndex + 1);
 
@@ -1315,9 +1317,16 @@ public:
 					{
 						rect.draw(Color(96, 28, 90));
 					}
+
+					rect.drawFrame(1.0, Alpha(32));
 				}
 			}
 		}
+	}
+
+	void drawNoteNumber(double x01, bool drawRight) const
+	{
+		const double unitHeight = 1.0 * m_drawArea.h / (m_maxNoteNumber - m_minNoteNumber + 1);
 
 		for (uint8 noteNumber = m_minNoteNumber; noteNumber <= m_maxNoteNumber; ++noteNumber)
 		{
@@ -1330,7 +1339,14 @@ public:
 
 			if (noteIndex == 0)
 			{
-				m_font(U" C", zeroIndexedOctave - 1).draw(Arg::bottomLeft = rect.bottomCenter(), ColorF(0.7));
+				if (drawRight)
+				{
+					m_font(U" C ", zeroIndexedOctave - 1).draw(Arg::bottomLeft = rect.bottom().reverse().position(x01), ColorF(0.7));
+				}
+				else
+				{
+					m_font(U" C ", zeroIndexedOctave - 1).draw(Arg::bottomRight = rect.bottom().reverse().position(x01), ColorF(0.7));
+				}
 			}
 		}
 	}
@@ -1362,6 +1378,11 @@ public:
 		m_laterSeconds = laterSeconds;
 	}
 
+	std::pair<uint8, uint8> noteNumberRange() const
+	{
+		return std::make_pair(m_minNoteNumber, m_maxNoteNumber);
+	}
+
 	uint8 minNoteNumber() const
 	{
 		return m_minNoteNumber;
@@ -1389,7 +1410,7 @@ private:
 	double rightX() const { return m_drawArea.x + m_drawArea.w; }
 	double topY() const { return m_drawArea.y; }
 	double bottomY() const { return m_drawArea.y + m_drawArea.h; }
-	
+
 	enum NoteType { NoteOff, NoteOn };
 
 	Font m_font = Font(12);
@@ -1422,6 +1443,12 @@ public:
 		LogScale
 	};
 
+	enum WindowType
+	{
+		None,
+		Hamming,
+	};
+
 	AudioVisualizer(const Rect& drawArea = Scene::Rect(), VisualizeType visualizeType = VisualizeType::Spectrum, FrequencyAxis axisType = FrequencyAxis::LogScale)
 		: m_inputWave(8192)
 		, m_drawArea(drawArea)
@@ -1445,8 +1472,18 @@ public:
 		}
 	}
 
-	void updateFFT()
+	void updateFFT(size_t inputSize = 8192)
 	{
+		if (m_windowType == WindowType::Hamming)
+		{
+			for (size_t i = 0; i < inputSize; ++i)
+			{
+				const float t = 1.0f * i / (inputSize - 1);
+				const float hammingWindow = (0.54f - 0.46f * cos(Math::TwoPiF * t));
+				m_inputWave[i] = hammingWindow * m_inputWave[i];
+			}
+		}
+
 		FFT::Analyze(m_fft, &m_inputWave[0], m_inputWave.size(), Wave::DefaultSampleRate, FFTSampleLength::SL8K);
 
 		if (m_visualize == VisualizeType::Score)
@@ -1460,9 +1497,12 @@ public:
 		++m_scrollY;
 		m_scrollY %= m_drawArea.h;
 
+		const double zeroLevel = 1.e-150;
 		const double unitFreq = 1.0 * Wave::DefaultSampleRate / 8192;
 		const size_t length = m_fft.buffer.size();
 		int j = 0;
+		double maxSpl = -DBL_MAX;
+
 		for (int i = 1; i < length; ++i)
 		{
 			const double f = unitFreq * i;
@@ -1491,23 +1531,44 @@ public:
 			const double ra2 = (f2 + 20.6 * 20.6) * sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) * (f2 + 12194.0 * 12194.0);
 			const double aWeighting = toSpl(ra1 / ra2) + 2.0;
 
-			const double spl = toSpl(m_fft.buffer[i]) + aWeighting;
-			const double y = Clamp(Math::InvLerp(m_minSpl, m_maxSpl, spl), 0., 1.);
-			m_ys[j] = Math::Lerp(m_ys[j], y, m_lerpStrength);
+			const double spl = toSpl(Max<double>(m_fft.buffer[i], zeroLevel)) + aWeighting;
+			m_spls[j] = spl;
 			m_xs[j] = x;
+
+			maxSpl = Max(maxSpl, spl);
+
+			++j;
+		}
+
+		const double minSpl = maxSpl + m_thresholdFromPeak;
+
+		for (int i = 0; i < j; ++i)
+		{
+			double y = Clamp(Math::InvLerp(m_minSpl, m_maxSpl, m_spls[i]), 0., 1.);
+			if (m_adjustPeak)
+			{
+				if (maxSpl < -100)
+				{
+					y = 0;
+				}
+				else
+				{
+					y = Clamp(Math::InvLerp(minSpl, maxSpl, m_spls[i]), 0., 1.);
+				}
+			}
+			m_ys[i] = Math::Lerp(m_ys[i], y, m_lerpStrength);
 
 			if (m_visualize == VisualizeType::Spectrum)
 			{
-				m_drawCurve[j] = Vec2(Math::Lerp(leftX(), rightX(), t), Math::Lerp(bottomY(), topY(), m_ys[j]));
-				m_points[j] = m_drawCurve[j];
+				m_drawCurve[i] = Vec2(leftX() + m_xs[i], Math::Lerp(bottomY(), topY(), m_ys[i]));
+				m_points[i] = m_drawCurve[i];
 			}
 			else if (m_visualize == VisualizeType::Spectrogram || m_visualize == VisualizeType::Score)
 			{
-				m_drawCurve[j] = Vec2(x, m_scrollY);
+				m_drawCurve[i] = Vec2(m_xs[i], m_scrollY);
 			}
 
-			m_colors[j] = Colormap01(m_ys[j], ColormapType::Inferno);
-			++j;
+			m_colors[i] = Colormap01(m_ys[i], ColormapType::Inferno);
 		}
 
 		m_points[j] = m_drawArea.br() + Vec2(0, 100);
@@ -1521,6 +1582,7 @@ public:
 
 		m_scoreVisualizer.drawBack();
 		m_scoreVisualizer.drawFront(midiData, currentTime);
+		m_scoreVisualizer.drawNoteNumber(0.5, true);
 
 		const double w = m_renderTexture.width();
 		const double h = m_renderTexture.height();
@@ -1538,7 +1600,7 @@ public:
 			rs.scissorEnable = true;
 			ScopedRenderStates2D ss{ rs };
 
-			const double centerX = (leftX() + rightX()) * 0.5;
+			const double currentTimeX = (leftX() + rightX()) * 0.5;
 
 			// 元はh/60秒で一周するのでh/60倍速で描画幅1秒になる
 			const double drawScale = (h / 60.0) / m_scoreVisualizer.pastSeconds();
@@ -1546,12 +1608,12 @@ public:
 			m_renderTexture
 				.scaled(w_ / w, drawScale * h_ / h)
 				.rotatedAt(Vec2::Zero(), -90_deg)
-				.draw(centerX - (h_ + m_scrollY * (h_ / h)) * drawScale, bottomY());
+				.draw(currentTimeX - (h_ + m_scrollY * (h_ / h)) * drawScale, bottomY());
 
 			m_renderTexture
 				.scaled(w_ / w, drawScale * h_ / h)
 				.rotatedAt(Vec2::Zero(), -90_deg)
-				.draw(centerX - m_scrollY * (h_ / h) * drawScale, bottomY());
+				.draw(currentTimeX - m_scrollY * (h_ / h) * drawScale, bottomY());
 
 			Graphics2D::Internal::SetBlendState(blendState);
 		}
@@ -1604,21 +1666,96 @@ public:
 			m_renderTexture.scaled(1, drawScale).draw(leftX(), m_drawArea.bl().y - m_scrollY * drawScale);
 			m_renderTexture.scaled(1, drawScale).draw(leftX(), m_drawArea.bl().y - (m_drawArea.h + m_scrollY) * drawScale);
 		}
-
-		const auto fs = m_freqAxis == LinearScale
-			? Array<int>::IndexedGenerate(20, [](size_t i) { return static_cast<int>(i * 1000); })
-			: Array<int>{ 30, 60, 100, 200, 300, 600, 1000, 2000, 3000, 6000, 10000, 15000, 20000 };
-		for (auto f : fs)
+		else if (m_visualize == VisualizeType::Score)
 		{
-			const double t = freqToAxis(f);
-			if (t < 0.0 || 1.0 < t)
+			updateSpectrogramTexture();
+
+			m_scoreVisualizer.drawBack();
+
+			const double w = m_renderTexture.width();
+			const double h = m_renderTexture.height();
+
+			const double w_ = h;
+			const double h_ = /*0.5 **/ w;
+
 			{
-				continue;
+				const auto blendState = Graphics2D::GetBlendState();
+				Graphics2D::Internal::SetBlendState(BlendState::Additive);
+
+				Graphics2D::SetScissorRect(Rect(m_drawArea.pos, static_cast<int>(h_), static_cast<int>(w_)));
+
+				RasterizerState rs = RasterizerState::Default2D;
+				rs.scissorEnable = true;
+				ScopedRenderStates2D ss{ rs };
+
+				const double currentTimeX = rightX();
+
+				// 元はh/60秒で一周するのでh/60倍速で描画幅1秒になる
+				const double drawScale = (h / 60.0) / m_scoreVisualizer.pastSeconds();
+
+				m_renderTexture
+					.scaled(w_ / w, drawScale * h_ / h)
+					.rotatedAt(Vec2::Zero(), -90_deg)
+					.draw(currentTimeX - (h_ + m_scrollY * (h_ / h)) * drawScale, bottomY());
+
+				m_renderTexture
+					.scaled(w_ / w, drawScale * h_ / h)
+					.rotatedAt(Vec2::Zero(), -90_deg)
+					.draw(currentTimeX - m_scrollY * (h_ / h) * drawScale, bottomY());
+
+				Graphics2D::Internal::SetBlendState(blendState);
 			}
-			const double x = Math::Lerp(leftX(), rightX(), t);
-			m_font(f < 1000 ? Format(f) : Format(f / 1000, U"k")).drawAt(x, bottomY() + 20, Color(m_color, 128));
-			Line({ x, topY() }, { x, bottomY() }).draw(Color(m_color, 64));
+
+			m_scoreVisualizer.drawNoteNumber(1.0, false);
 		}
+
+		if (m_visualize == VisualizeType::Spectrum || m_visualize == VisualizeType::Spectrogram)
+		{
+			const auto fs = m_freqAxis == LinearScale
+				? Array<int>::IndexedGenerate(20, [](size_t i) { return static_cast<int>(i * 1000); })
+				: Array<int>{ 30, 60, 100, 200, 300, 600, 1000, 2000, 3000, 6000, 10000, 15000, 20000 };
+			for (auto f : fs)
+			{
+				const double t = freqToAxis(f);
+				if (t < 0.0 || 1.0 < t)
+				{
+					continue;
+				}
+				const double x = Math::Lerp(leftX(), rightX(), t);
+				m_font(f < 1000 ? Format(f) : Format(f / 1000, U"k")).drawAt(x, bottomY() + 20, Color(m_color, 128));
+				Line({ x, topY() }, { x, bottomY() }).draw(Color(m_color, 64));
+			}
+		}
+	}
+
+	const Array<float>& inputWave() const
+	{
+		return m_inputWave;
+	}
+
+	Array<float>& inputWave()
+	{
+		return m_inputWave;
+	}
+
+	const Rect& drawArea() const
+	{
+		return m_drawArea;
+	}
+	void setDrawArea(const Rect& drawArea)
+	{
+		m_drawArea = drawArea;
+		resetCurve();
+		m_scoreVisualizer.setDrawArea(drawArea);
+	}
+
+	Color color() const
+	{
+		return m_color;
+	}
+	void setColor(Color c)
+	{
+		m_color = c;
 	}
 
 	void setFreqRange(double minFreq, double maxFreq)
@@ -1629,8 +1766,20 @@ public:
 
 	void setSplRange(double minSpl, double maxSpl)
 	{
+		m_adjustPeak = false;
 		setMinSpl(minSpl);
 		setMaxSpl(maxSpl);
+	}
+
+	void setThresholdFromPeak(double thresholdFromPeak)
+	{
+		m_adjustPeak = true;
+		m_thresholdFromPeak = thresholdFromPeak;
+	}
+
+	std::pair<uint8, uint8> noteNumberRange() const
+	{
+		return m_scoreVisualizer.noteNumberRange();
 	}
 
 	void setDrawScore(uint8 minNoteNumber, uint8 maxNoteNumber)
@@ -1697,6 +1846,15 @@ public:
 		m_freqAxis = type;
 	}
 
+	WindowType windowType() const
+	{
+		return m_windowType;
+	}
+	void setWindowType(WindowType type)
+	{
+		m_windowType = type;
+	}
+
 	double lerpStrength() const
 	{
 		return m_lerpStrength;
@@ -1729,6 +1887,7 @@ private:
 		m_colors.resize(m_drawArea.w);
 		m_ys.resize(m_drawArea.w);
 		m_xs.resize(m_drawArea.w);
+		m_spls.resize(m_drawArea.w);
 		for (size_t x = 0; x < m_drawCurve.size(); ++x)
 		{
 			m_drawCurve[x].x = rightX();
@@ -1736,6 +1895,7 @@ private:
 			m_colors[x] = Palette::Black;
 			m_ys[x] = 0;
 			m_xs[x] = leftX() + x;
+			m_spls[x] = 0;
 			m_points[x] = Vec2(leftX() + x, bottomY());
 		}
 	}
@@ -1791,8 +1951,12 @@ private:
 	double m_minSpl = -100;
 	double m_maxSpl = -0;
 
+	bool m_adjustPeak = false;
+	double m_thresholdFromPeak = -20;
+
 	VisualizeType m_visualize = VisualizeType::Spectrum;
 	FrequencyAxis m_freqAxis = FrequencyAxis::LogScale;
+	WindowType m_windowType = WindowType::None;
 
 	double m_lerpStrength = 0.2;
 
@@ -1806,6 +1970,7 @@ private:
 	LineString m_drawCurve;
 	Array<double> m_xs;
 	Array<double> m_ys;
+	Array<double> m_spls;
 	Array<ColorF> m_colors;
 	Array<Vec2> m_points;
 };
