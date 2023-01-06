@@ -364,10 +364,13 @@ public:
 
 		for (auto& [noteNumber, noteState] : m_noteState)
 		{
+			const auto targetFreq = NoteNumberToFrequency(noteNumber);
+
 			if (m_mono && m_glide)
 			{
-				const double t = Saturate(m_glideElapsed / m_glideTime);
-				m_currentFreq = m_startGlideFreq * pow(m_targetScale, t);
+				const double targetScale = targetFreq / m_startGlideFreq;
+				const double rate = Saturate(m_glideElapsed / m_glideTime);
+				m_currentFreq = m_startGlideFreq * pow(targetScale, rate);
 				m_glideElapsed += deltaT;
 			}
 			else
@@ -422,9 +425,6 @@ public:
 
 		if (m_mono && m_glide)
 		{
-			const auto targetFreq = NoteNumberToFrequency(noteNumber);
-
-			m_targetScale = targetFreq / m_currentFreq;
 			m_startGlideFreq = m_currentFreq;
 			m_glideElapsed = 0;
 		}
@@ -547,7 +547,6 @@ private:
 
 	double m_currentFreq = 440; //現在の周波数を常に保存しておく
 	double m_startGlideFreq = 440; // グライド開始時の周波数
-	double m_targetScale = 1.0; // 目標周波数 = m_startGlideFreq * m_targetScale
 	double m_glideElapsed = 0.0; // グライド開始から経過した秒数
 };
 
@@ -688,16 +687,16 @@ void Main()
 	audioStream->setMidiData(midiDataOpt.value());
 
 	bool isRunning = true;
-	bool isReset = false;
+	bool requestRestart = false;
 
 	auto renderUpdate = [&]()
 	{
 		while (isRunning)
 		{
-			if (isReset)
+			if (requestRestart)
 			{
 				audioStream->restart();
-				isReset = false;
+				requestRestart = false;
 			}
 
 			while (!audioStream->bufferCompleted())
@@ -751,7 +750,7 @@ void Main()
 
 		if (KeySpace.down())
 		{
-			isReset = true;
+			requestRestart = true;
 		}
 	}
 
