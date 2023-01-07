@@ -507,6 +507,81 @@ public:
 		m_oscIndex = oscIndex;
 	}
 
+	double pitchShift() const
+	{
+		return m_pitchShift;
+	}
+	void setPitchShift(double pitchShift)
+	{
+		m_pitchShift = pitchShift;
+	}
+
+	int unisonCount() const
+	{
+		return m_unisonCount;
+	}
+	void setUnisonCount(int unisonCount)
+	{
+		m_unisonCount = unisonCount;
+		updateUnisonParam();
+	}
+
+	double detune() const
+	{
+		return m_detune;
+	}
+	void setDetune(double detune)
+	{
+		m_detune = detune;
+		updateUnisonParam();
+	}
+
+	double spread() const
+	{
+		return m_spread;
+	}
+	void setSpread(double spread)
+	{
+		m_spread = spread;
+		updateUnisonParam();
+	}
+
+	bool mono() const
+	{
+		return m_mono;
+	}
+	void setMono(bool mono)
+	{
+		m_mono = mono;
+	}
+
+	bool legato() const
+	{
+		return m_legato;
+	}
+	void setLegato(bool legato)
+	{
+		m_legato = legato;
+	}
+
+	bool glide() const
+	{
+		return m_glide;
+	}
+	void setGlide(bool glide)
+	{
+		m_glide = glide;
+	}
+
+	double glideTime() const
+	{
+		return m_glideTime;
+	}
+	void setGlideTime(double glideTime)
+	{
+		m_glideTime = glideTime;
+	}
+
 private:
 
 	void updateUnisonParam()
@@ -702,6 +777,10 @@ void Main()
 
 	auto& synth = audioStream->synth();
 	synth.setOscIndex(static_cast<int>(WaveForm::Sin));
+	synth.setMono(true);
+	synth.setLegato(true);
+	synth.setGlide(true);
+	synth.setGlideTime(0.1);
 
 	auto& adsr = synth.adsr();
 	adsr.attackTime = 0.01;

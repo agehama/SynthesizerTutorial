@@ -407,6 +407,15 @@ public:
 		m_oscIndex = oscIndex;
 	}
 
+	double pitchShift() const
+	{
+		return m_pitchShift;
+	}
+	void setPitchShift(double pitchShift)
+	{
+		m_pitchShift = pitchShift;
+	}
+
 private:
 
 	std::multimap<int8_t, NoteState> m_noteState;

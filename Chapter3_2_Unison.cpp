@@ -443,6 +443,45 @@ public:
 		m_oscIndex = oscIndex;
 	}
 
+	double pitchShift() const
+	{
+		return m_pitchShift;
+	}
+	void setPitchShift(double pitchShift)
+	{
+		m_pitchShift = pitchShift;
+	}
+
+	int unisonCount() const
+	{
+		return m_unisonCount;
+	}
+	void setUnisonCount(int unisonCount)
+	{
+		m_unisonCount = unisonCount;
+		updateUnisonParam();
+	}
+
+	double detune() const
+	{
+		return m_detune;
+	}
+	void setDetune(double detune)
+	{
+		m_detune = detune;
+		updateUnisonParam();
+	}
+
+	double spread() const
+	{
+		return m_spread;
+	}
+	void setSpread(double spread)
+	{
+		m_spread = spread;
+		updateUnisonParam();
+	}
+
 private:
 
 	void updateUnisonParam()
@@ -604,7 +643,7 @@ void Main()
 {
 	Window::Resize(1600, 900);
 
-	auto midiDataOpt = LoadMidi(U"example/midi/test.mid");
+	auto midiDataOpt = LoadMidi(U"C5_B8.mid");
 	if (!midiDataOpt)
 	{
 		// ファイルが見つからない or 読み込みエラー
@@ -614,14 +653,17 @@ void Main()
 	AudioVisualizer visualizer;
 	visualizer.setSplRange(-60, -30);
 	visualizer.setWindowType(AudioVisualizer::Hamming);
-	visualizer.setDrawScore(NoteNumber::C_2, NoteNumber::B_7);
-	visualizer.setDrawArea(Scene::Rect());
+	visualizer.setFreqRange(300, 10000);
+	visualizer.setDrawArea(Scene::Rect().stretched(-50));
 
 	std::shared_ptr<AudioRenderer> audioStream = std::make_shared<AudioRenderer>();
 	audioStream->setMidiData(midiDataOpt.value());
 
 	auto& synth = audioStream->synth();
-	synth.setOscIndex(static_cast<int>(WaveForm::Sin));
+	synth.setOscIndex(static_cast<int>(WaveForm::Saw));
+	synth.setUnisonCount(4);
+	synth.setDetune(0.5);
+	synth.setSpread(0.0);
 
 	auto& adsr = synth.adsr();
 	adsr.attackTime = 0.01;
@@ -671,7 +713,7 @@ void Main()
 			}
 
 			visualizer.updateFFT(fftInputSize);
-			visualizer.drawScore(midiDataOpt.value(), 1.0 * audioStream->playingMIDIPos() / SamplingFreq);
+			visualizer.draw();
 		}
 
 		if (KeyG.down())
