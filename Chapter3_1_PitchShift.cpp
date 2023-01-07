@@ -603,16 +603,19 @@ void Main()
 			const auto& streamBuffer = audioStream->buffer();
 			const auto readStartPos = audioStream->bufferReadPos();
 
-			const size_t fftInputSize = Min(visualizeBuffer.size(), streamBuffer.size());
+			const auto fftInputSize = Min(visualizeBuffer.size(), streamBuffer.size());
 
 			for (size_t i = 0; i < fftInputSize; ++i)
 			{
-				const size_t inputIndex = (readStartPos + i) % streamBuffer.size();
-				visualizeBuffer[i] = (streamBuffer[inputIndex].left + streamBuffer[inputIndex].left) * 0.5f;
+				const auto inputIndex = (readStartPos + i) % streamBuffer.size();
+				const auto& sample = streamBuffer[inputIndex];
+				visualizeBuffer[i] = (sample.left + sample.right) * 0.5f;
 			}
 
 			visualizer.updateFFT(fftInputSize);
-			visualizer.drawScore(midiDataOpt.value(), 1.0 * audioStream->playingMIDIPos() / SamplingFreq);
+
+			const auto currentTime = 1.0 * audioStream->playingMIDIPos() / SamplingFreq;
+			visualizer.drawScore(midiDataOpt.value(), currentTime);
 		}
 
 		if (KeyG.down())
