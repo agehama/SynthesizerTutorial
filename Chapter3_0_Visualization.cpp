@@ -326,14 +326,12 @@ public:
 		// リリースが終了したノートを削除する
 		std::erase_if(m_noteState, [&](const auto& noteState) { return noteState.second.m_envelope.isReleased(m_adsr); });
 
-		const auto pitch = pow(2.0, m_pitchShift / 12.0);
-
 		// 入力中の波形を加算して書き込む
 		WaveSample sample(0, 0);
 		for (auto& [noteNumber, noteState] : m_noteState)
 		{
 			const auto envLevel = noteState.m_envelope.currentLevel() * noteState.m_velocity;
-			const auto frequency = NoteNumberToFrequency(noteNumber) * pitch;
+			const auto frequency = NoteNumberToFrequency(noteNumber);
 
 			const auto osc = OscWaveTables[m_oscIndex].get(noteState.m_phase, frequency);
 			noteState.m_phase += deltaT * frequency * 2_pi;
@@ -379,12 +377,6 @@ public:
 		SimpleGUI::Slider(U"amplitude : {:.2f}"_fmt(m_amplitude), m_amplitude, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
 		SliderInt(U"oscillator : {}"_fmt(m_oscIndex), m_oscIndex, 0, 3, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
 
-		if (SimpleGUI::Slider(U"pitchShift : {:.2f}"_fmt(m_pitchShift), m_pitchShift, -24.0, 24.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth)
-			 && KeyControl.pressed())
-		{
-			m_pitchShift = Math::Round(m_pitchShift);
-		}
-
 		m_adsr.updateGUI(pos);
 	}
 
@@ -414,7 +406,6 @@ private:
 	ADSRConfig m_adsr;
 
 	double m_amplitude = 0.1;
-	double m_pitchShift = 0.0;
 	int m_oscIndex = 0;
 };
 

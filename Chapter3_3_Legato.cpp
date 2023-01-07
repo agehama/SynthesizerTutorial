@@ -475,6 +475,15 @@ public:
 		return m_adsr;
 	}
 
+	int oscIndex() const
+	{
+		return m_oscIndex;
+	}
+	void setOscIndex(int oscIndex)
+	{
+		m_oscIndex = oscIndex;
+	}
+
 private:
 
 	void updateUnisonParam()
@@ -589,6 +598,26 @@ public:
 		m_synth.updateGUI(pos);
 	}
 
+	const Array<WaveSample>& buffer() const
+	{
+		return m_buffer;
+	}
+
+	size_t bufferReadPos() const
+	{
+		return m_bufferReadPos;
+	}
+
+	size_t playingMIDIPos() const
+	{
+		return m_readMIDIPos - (m_bufferWritePos - m_bufferReadPos);
+	}
+
+	Synthesizer& synth()
+	{
+		return m_synth;
+	}
+
 private:
 
 	void getAudio(float* left, float* right, const size_t samplesToWrite) override
@@ -617,15 +646,32 @@ private:
 
 void Main()
 {
-	auto midiDataOpt = LoadMidi(U"legato_test.mid");
+	Window::Resize(1600, 900);
+
+	auto midiDataOpt = LoadMidi(U"glide_test.mid");
 	if (!midiDataOpt)
 	{
 		// ファイルが見つからない or 読み込みエラー
 		return;
 	}
 
+	AudioVisualizer visualizer;
+	visualizer.setSplRange(-60, -30);
+	visualizer.setWindowType(AudioVisualizer::Hamming);
+	visualizer.setDrawScore(NoteNumber::C_2, NoteNumber::B_7);
+	visualizer.setDrawArea(Scene::Rect());
+
 	std::shared_ptr<AudioRenderer> audioStream = std::make_shared<AudioRenderer>();
 	audioStream->setMidiData(midiDataOpt.value());
+
+	auto& synth = audioStream->synth();
+	synth.setOscIndex(static_cast<int>(WaveForm::Sin));
+
+	auto& adsr = synth.adsr();
+	adsr.attackTime = 0.01;
+	adsr.decayTime = 0.0;
+	adsr.sustainLevel = 1.0;
+	adsr.releaseTime = 0.01;
 
 	bool isRunning = true;
 
@@ -647,11 +693,40 @@ void Main()
 	Audio audio(audioStream);
 	audio.play();
 
+	bool showGUI = true;
 	while (System::Update())
 	{
 		Vec2 pos(20, 20 - SliderHeight);
 
-		audioStream->updateGUI(pos);
+		// visualizerの更新
+		{
+			auto& visualizeBuffer = visualizer.inputWave();
+			visualizeBuffer.fill(0);
+
+			const auto& streamBuffer = audioStream->buffer();
+			const auto readStartPos = audioStream->bufferReadPos();
+
+			const size_t fftInputSize = Min(visualizeBuffer.size(), streamBuffer.size());
+
+			for (size_t i = 0; i < fftInputSize; ++i)
+			{
+				const size_t inputIndex = (readStartPos + i) % streamBuffer.size();
+				visualizeBuffer[i] = (streamBuffer[inputIndex].left + streamBuffer[inputIndex].left) * 0.5f;
+			}
+
+			visualizer.updateFFT(fftInputSize);
+			visualizer.drawScore(midiDataOpt.value(), 1.0 * audioStream->playingMIDIPos() / SamplingFreq);
+		}
+
+		if (KeyG.down())
+		{
+			showGUI = !showGUI;
+		}
+
+		if (showGUI)
+		{
+			audioStream->updateGUI(pos);
+		}
 	}
 
 	isRunning = false;

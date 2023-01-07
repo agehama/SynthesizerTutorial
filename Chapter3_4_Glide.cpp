@@ -498,6 +498,15 @@ public:
 		return m_adsr;
 	}
 
+	int oscIndex() const
+	{
+		return m_oscIndex;
+	}
+	void setOscIndex(int oscIndex)
+	{
+		m_oscIndex = oscIndex;
+	}
+
 private:
 
 	void updateUnisonParam()
@@ -639,6 +648,11 @@ public:
 		return m_readMIDIPos - (m_bufferWritePos - m_bufferReadPos);
 	}
 
+	Synthesizer& synth()
+	{
+		return m_synth;
+	}
+
 private:
 
 	void getAudio(float* left, float* right, const size_t samplesToWrite) override
@@ -685,6 +699,15 @@ void Main()
 
 	std::shared_ptr<AudioRenderer> audioStream = std::make_shared<AudioRenderer>();
 	audioStream->setMidiData(midiDataOpt.value());
+
+	auto& synth = audioStream->synth();
+	synth.setOscIndex(static_cast<int>(WaveForm::Sin));
+
+	auto& adsr = synth.adsr();
+	adsr.attackTime = 0.01;
+	adsr.decayTime = 0.0;
+	adsr.sustainLevel = 1.0;
+	adsr.releaseTime = 0.01;
 
 	bool isRunning = true;
 	bool requestRestart = false;
