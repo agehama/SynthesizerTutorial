@@ -1213,8 +1213,8 @@ public:
 		const double beginTime = currentTime - m_pastSeconds;
 		const double endTime = currentTime + m_laterSeconds;
 
-		const auto beginTick = midiData.secondsToTicks(beginTime);
-		const auto endTick = midiData.secondsToTicks(endTime);
+		const auto beginTick = midiData.secondsToTicks(Max(0.0, beginTime));
+		const auto endTick = midiData.secondsToTicks(Max(0.0, endTime));
 
 		for (uint8 i = 0; i < 128; ++i)
 		{
@@ -1295,11 +1295,9 @@ public:
 
 				for (const auto& note : keyNotes)
 				{
-					// currentTimeを過ぎた表示は消す
-					//const double t0 = Max(note.x, currentTime);
-					//const double t1 = Max(note.y, currentTime);
-					const double t0 = note.x;
-					const double t1 = note.y;
+					// m_showPastNotes == falseの場合、currentTimeを過ぎた表示を消す
+					const double t0 = m_showPastNotes ? note.x : Max(note.x, currentTime);
+					const double t1 = m_showPastNotes ? note.y : Max(note.y, currentTime);
 
 					const double x0 = Math::Map(t0, beginTime, endTime, leftX(), rightX());
 					const double x1 = Math::Map(t1, beginTime, endTime, leftX(), rightX());
@@ -1401,6 +1399,15 @@ public:
 		m_maxNoteNumber = maxNoteNumber;
 	}
 
+	bool showPastNotes() const
+	{
+		return m_showPastNotes;
+	}
+	void setShowPastNotes(bool showPastNotes)
+	{
+		m_showPastNotes = showPastNotes;
+	}
+
 private:
 
 	const std::set<int> whiteIndices = { 0,2,4,5,7,9,11 };
@@ -1418,6 +1425,7 @@ private:
 	Rect m_drawArea;
 	double m_pastSeconds = 2;
 	double m_laterSeconds = 2;
+	bool m_showPastNotes = true;
 
 	uint8 m_minNoteNumber = NoteNumber::C_3;
 	uint8 m_maxNoteNumber = NoteNumber::B_6;
@@ -1853,6 +1861,15 @@ public:
 	void setWindowType(WindowType type)
 	{
 		m_windowType = type;
+	}
+
+	bool showPastNotes() const
+	{
+		return m_scoreVisualizer.showPastNotes();
+	}
+	void setShowPastNotes(bool showPastNotes)
+	{
+		m_scoreVisualizer.setShowPastNotes(showPastNotes);
 	}
 
 	double lerpStrength() const
