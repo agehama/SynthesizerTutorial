@@ -443,6 +443,15 @@ public:
 		m_oscIndex = oscIndex;
 	}
 
+	double amplitude() const
+	{
+		return m_amplitude;
+	}
+	void setAmplitude(double amplitude)
+	{
+		m_amplitude = amplitude;
+	}
+
 	double pitchShift() const
 	{
 		return m_pitchShift;

@@ -399,6 +399,15 @@ public:
 		m_oscIndex = oscIndex;
 	}
 
+	double amplitude() const
+	{
+		return m_amplitude;
+	}
+	void setAmplitude(double amplitude)
+	{
+		m_amplitude = amplitude;
+	}
+
 private:
 
 	std::multimap<int8_t, NoteState> m_noteState;

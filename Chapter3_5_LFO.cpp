@@ -651,6 +651,15 @@ public:
 		m_oscIndex = oscIndex;
 	}
 
+	const ModParameter& amplitude() const
+	{
+		return m_amplitude;
+	}
+	ModParameter& amplitude()
+	{
+		return m_amplitude;
+	}
+
 	const ModParameter& pitchShift() const
 	{
 		return m_pitchShift;
