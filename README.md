@@ -1457,7 +1457,7 @@
 ## その３：波形を合成して音を作る
 ### ３.０ 可視化機能を実装する
 ```diff
-@@ -390,6 +390,15 @@ public:
+@@ -390,6 +390,24 @@ public:
  		return m_adsr;
  	}
  
@@ -1470,10 +1470,19 @@
 +		m_oscIndex = oscIndex;
 +	}
 +
++	double amplitude() const
++	{
++		return m_amplitude;
++	}
++	void setAmplitude(double amplitude)
++	{
++		m_amplitude = amplitude;
++	}
++
  private:
  
  	std::multimap<int8_t, NoteState> m_noteState;
-@@ -468,6 +477,26 @@ public:
+@@ -468,6 +486,26 @@ public:
  		m_synth.updateGUI(pos);
  	}
  
@@ -1500,7 +1509,7 @@
  private:
  
  	void getAudio(float* left, float* right, const size_t samplesToWrite) override
-@@ -496,6 +525,8 @@ private:
+@@ -496,6 +534,8 @@ private:
  
  void Main()
  {
@@ -1509,7 +1518,7 @@
  	auto midiDataOpt = LoadMidi(U"example/midi/test.mid");
  	if (!midiDataOpt)
  	{
-@@ -503,9 +534,24 @@ void Main()
+@@ -503,9 +543,24 @@ void Main()
  		return;
  	}
  
@@ -1534,7 +1543,7 @@
  	bool isRunning = true;
  
  	auto renderUpdate = [&]()
-@@ -526,11 +572,43 @@ void Main()
+@@ -526,11 +581,43 @@ void Main()
  	Audio audio(audioStream);
  	audio.play();
  
@@ -1611,8 +1620,8 @@
  		m_adsr.updateGUI(pos);
  	}
  
-@@ -399,6 +407,15 @@ public:
- 		m_oscIndex = oscIndex;
+@@ -408,6 +416,15 @@ public:
+ 		m_amplitude = amplitude;
  	}
  
 +	double pitchShift() const
@@ -1627,7 +1636,7 @@
  private:
  
  	std::multimap<int8_t, NoteState> m_noteState;
-@@ -406,6 +423,7 @@ private:
+@@ -415,6 +432,7 @@ private:
  	ADSRConfig m_adsr;
  
  	double m_amplitude = 0.1;
@@ -1733,7 +1742,7 @@
  		m_adsr.updateGUI(pos);
  	}
  
-@@ -416,8 +452,63 @@ public:
+@@ -425,8 +461,63 @@ public:
  		m_pitchShift = pitchShift;
  	}
  
@@ -1797,7 +1806,7 @@
  	std::multimap<int8_t, NoteState> m_noteState;
  
  	ADSRConfig m_adsr;
-@@ -425,6 +516,13 @@ private:
+@@ -434,6 +525,13 @@ private:
  	double m_amplitude = 0.1;
  	double m_pitchShift = 0.0;
  	int m_oscIndex = 0;
@@ -1811,7 +1820,7 @@
  };
  
  class AudioRenderer : public IAudioStream
-@@ -545,7 +643,7 @@ void Main()
+@@ -554,7 +652,7 @@ void Main()
  {
  	Window::Resize(1600, 900);
  
@@ -1820,7 +1829,7 @@
  	if (!midiDataOpt)
  	{
  		// ファイルが見つからない or 読み込みエラー
-@@ -555,14 +653,17 @@ void Main()
+@@ -564,14 +662,17 @@ void Main()
  	AudioVisualizer visualizer;
  	visualizer.setSplRange(-60, -30);
  	visualizer.setWindowType(AudioVisualizer::Hamming);
@@ -1841,7 +1850,7 @@
  
  	auto& adsr = synth.adsr();
  	adsr.attackTime = 0.01;
-@@ -614,8 +715,7 @@ void Main()
+@@ -623,8 +724,7 @@ void Main()
  
  			visualizer.updateFFT(fftInputSize);
  
@@ -1980,7 +1989,7 @@
  	}
  
  	void clear()
-@@ -482,6 +523,24 @@ public:
+@@ -491,6 +532,24 @@ public:
  		updateUnisonParam();
  	}
  
@@ -2005,7 +2014,7 @@
  private:
  
  	void updateUnisonParam()
-@@ -521,6 +580,9 @@ private:
+@@ -530,6 +589,9 @@ private:
  	double m_detune = 0;
  	double m_spread = 1.0;
  
@@ -2015,7 +2024,7 @@
  	std::array<float, MaxUnisonSize> m_detunePitch;
  	std::array<Float2, MaxUnisonSize> m_unisonPan;
  };
-@@ -643,7 +705,7 @@ void Main()
+@@ -652,7 +714,7 @@ void Main()
  {
  	Window::Resize(1600, 900);
  
@@ -2024,7 +2033,7 @@
  	if (!midiDataOpt)
  	{
  		// ファイルが見つからない or 読み込みエラー
-@@ -653,17 +715,17 @@ void Main()
+@@ -662,17 +724,17 @@ void Main()
  	AudioVisualizer visualizer;
  	visualizer.setSplRange(-60, -30);
  	visualizer.setWindowType(AudioVisualizer::Hamming);
@@ -2048,7 +2057,7 @@
  
  	auto& adsr = synth.adsr();
  	adsr.attackTime = 0.01;
-@@ -715,7 +777,8 @@ void Main()
+@@ -724,7 +786,8 @@ void Main()
  
  			visualizer.updateFFT(fftInputSize);
  
@@ -2115,7 +2124,7 @@
  				pos.x -= marginWidth;
  			}
  		}
-@@ -541,6 +564,24 @@ public:
+@@ -550,6 +573,24 @@ public:
  		m_legato = legato;
  	}
  
@@ -2140,7 +2149,7 @@
  private:
  
  	void updateUnisonParam()
-@@ -582,9 +623,15 @@ private:
+@@ -591,9 +632,15 @@ private:
  
  	bool m_mono = false;
  	bool m_legato = false;
@@ -2156,7 +2165,7 @@
  };
  
  class AudioRenderer : public IAudioStream
-@@ -603,6 +650,12 @@ public:
+@@ -612,6 +659,12 @@ public:
  		m_midiData = midiData;
  	}
  
@@ -2169,7 +2178,7 @@
  	void bufferSample()
  	{
  		const double currentTime = 1.0 * m_readMIDIPos / SamplingFreq;
-@@ -713,10 +766,10 @@ void Main()
+@@ -722,10 +775,10 @@ void Main()
  	}
  
  	AudioVisualizer visualizer;
@@ -2183,7 +2192,7 @@
  	visualizer.setDrawArea(Scene::Rect());
  
  	std::shared_ptr<AudioRenderer> audioStream = std::make_shared<AudioRenderer>();
-@@ -726,6 +779,8 @@ void Main()
+@@ -735,6 +788,8 @@ void Main()
  	synth.setOscIndex(static_cast<int>(WaveForm::Sin));
  	synth.setMono(true);
  	synth.setLegato(true);
@@ -2192,7 +2201,7 @@
  
  	auto& adsr = synth.adsr();
  	adsr.attackTime = 0.01;
-@@ -734,11 +789,18 @@ void Main()
+@@ -743,11 +798,18 @@ void Main()
  	adsr.releaseTime = 0.01;
  
  	bool isRunning = true;
@@ -2211,7 +2220,7 @@
  			while (!audioStream->bufferCompleted())
  			{
  				audioStream->bufferSample();
-@@ -790,6 +852,11 @@ void Main()
+@@ -799,6 +861,11 @@ void Main()
  		{
  			audioStream->updateGUI(pos);
  		}
@@ -2223,4 +2232,278 @@
  	}
  
  	isRunning = false;
+```
+### ３.５ LFO による変調
+```diff
+@@ -308,6 +308,134 @@ private:
+ 	double m_prevStateLevel = 0; // ステート変更前のレベル [0, 1]
+ };
+ 
++class LFO
++{
++public:
++
++	// 位相をリセットする
++	void reset()
++	{
++		m_phase = 0;
++	}
++
++	void update(double dt)
++	{
++		if (m_lfoFunction)
++		{
++			// 音符の長さで周期を設定する場合は、ここでBPMを受け取って時間に変換する
++			const double cycleTime = m_seconds;
++			const double deltaPhase = Math::TwoPi * dt / cycleTime;
++
++			m_currentLevel = m_lfoFunction(m_phase);
++			m_phase += deltaPhase;
++
++			if (Math::TwoPi < m_phase)
++			{
++				if (m_loop)
++				{
++					m_phase -= Math::TwoPi;
++				}
++				else
++				{
++					m_phase = Math::TwoPi;
++				}
++			}
++		}
++	}
++
++	// 現在の入力値: [0, 2pi]
++	double phase() const
++	{
++		return m_phase;
++	}
++
++	// 現在の出力値: [-1.0, 1.0]
++	double currentLevel() const
++	{
++		return m_currentLevel;
++	}
++
++	// 周期を設定する
++	void setSeconds(double seconds)
++	{
++		m_seconds = seconds;
++	}
++
++	// カーブを設定する
++	void setFunction(std::function<double(double)> func)
++	{
++		m_lfoFunction = func;
++	}
++
++	bool isLoop() const
++	{
++		return m_loop;
++	}
++
++	// ループを有効にする
++	void setLoop(bool isLoop)
++	{
++		m_loop = isLoop;
++	}
++
++private:
++
++	double m_seconds = 1;
++	bool m_loop = true;
++	std::function<double(double)> m_lfoFunction;
++
++	double m_phase = 0;
++	double m_currentLevel = 0;
++};
++
++class ModParameter
++{
++public:
++
++	ModParameter(double value) : value(value) {}
++
++	// 値が書き換わったら true を返す
++	bool fetch(const Array<LFO>& lfoTable)
++	{
++		if (m_modIndex)
++		{
++			const double x = lfoTable[m_modIndex.value()].currentLevel();
++			const double newValue = Math::Lerp(m_low, m_high, x * 0.5 + 0.5);
++			if (value != newValue)
++			{
++				value = newValue;
++				return true;
++			}
++		}
++
++		return false;
++	}
++
++	void setRange(double lowValue, double highValue)
++	{
++		m_low = lowValue;
++		m_high = highValue;
++	}
++
++	void setModIndex(int index)
++	{
++		m_modIndex = index;
++	}
++
++	void unsetModIndex()
++	{
++		m_modIndex = none;
++	}
++
++	double value = 0;
++
++private:
++
++	double m_low = 0;
++	double m_high = 1;
++	Optional<int> m_modIndex;
++};
++
+ float NoteNumberToFrequency(int8_t d)
+ {
+ 	return 440.0f * pow(2.0f, (d - 69) / 12.0f);
+@@ -354,10 +482,20 @@ public:
+ 			noteState.m_envelope.update(m_adsr, deltaT);
+ 		}
+ 
++		// 再生中のノートがあれば LFO を更新する
++		if (!m_noteState.empty())
++		{
++			for (auto& lfoState : m_lfoStates)
++			{
++				lfoState.update(deltaT);
++			}
++		}
++
+ 		// リリースが終了したノートを削除する
+ 		std::erase_if(m_noteState, [&](const auto& noteState) { return noteState.second.m_envelope.isReleased(m_adsr); });
+ 
+-		const auto pitch = pow(2.0, m_pitchShift / 12.0);
++		m_pitchShift.fetch(m_lfoStates);
++		const auto pitch = pow(2.0, m_pitchShift.value / 12.0);
+ 
+ 		// 入力中の波形を加算して書き込む
+ 		WaveSample sample(0, 0);
+@@ -399,7 +537,8 @@ public:
+ 			}
+ 		}
+ 
+-		return sample * static_cast<float>(m_amplitude / sqrt(m_unisonCount));
++		m_amplitude.fetch(m_lfoStates);
++		return sample * static_cast<float>(m_amplitude.value / sqrt(m_unisonCount));
+ 	}
+ 
+ 	void noteOn(int8_t noteNumber, int8_t velocity)
+@@ -428,6 +567,15 @@ public:
+ 			m_startGlideFreq = m_currentFreq;
+ 			m_glideElapsed = 0;
+ 		}
++
++		if (!m_mono)
++		{
++			// LFO の再生状態をリセットする
++			for (auto& lfoState : m_lfoStates)
++			{
++				lfoState.reset();
++			}
++		}
+ 	}
+ 
+ 	void noteOff(int8_t noteNumber)
+@@ -449,13 +597,13 @@ public:
+ 
+ 	void updateGUI(Vec2& pos)
+ 	{
+-		SimpleGUI::Slider(U"amplitude : {:.2f}"_fmt(m_amplitude), m_amplitude, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
++		SimpleGUI::Slider(U"amplitude : {:.2f}"_fmt(m_amplitude.value), m_amplitude.value, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
+ 		SliderInt(U"oscillator : {}"_fmt(m_oscIndex), m_oscIndex, 0, 3, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
+ 
+-		if (SimpleGUI::Slider(U"pitchShift : {:.2f}"_fmt(m_pitchShift), m_pitchShift, -24.0, 24.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth)
++		if (SimpleGUI::Slider(U"pitchShift : {:.2f}"_fmt(m_pitchShift.value), m_pitchShift.value, -24.0, 24.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth)
+ 			 && KeyControl.pressed())
+ 		{
+-			m_pitchShift = Math::Round(m_pitchShift);
++			m_pitchShift.value = Math::Round(m_pitchShift.value);
+ 		}
+ 
+ 		bool unisonUpdated = false;
+@@ -498,6 +646,11 @@ public:
+ 		return m_adsr;
+ 	}
+ 
++	Array<LFO>& lfoStates()
++	{
++		return m_lfoStates;
++	}
++
+ 	int oscIndex() const
+ 	{
+ 		return m_oscIndex;
+@@ -507,22 +660,22 @@ public:
+ 		m_oscIndex = oscIndex;
+ 	}
+ 
+-	double amplitude() const
++	const ModParameter& amplitude() const
+ 	{
+ 		return m_amplitude;
+ 	}
+-	void setAmplitude(double amplitude)
++	ModParameter& amplitude()
+ 	{
+-		m_amplitude = amplitude;
++		return m_amplitude;
+ 	}
+ 
+-	double pitchShift() const
++	const ModParameter& pitchShift() const
+ 	{
+ 		return m_pitchShift;
+ 	}
+-	void setPitchShift(double pitchShift)
++	ModParameter& pitchShift()
+ 	{
+-		m_pitchShift = pitchShift;
++		return m_pitchShift;
+ 	}
+ 
+ 	int unisonCount() const
+@@ -622,8 +775,10 @@ private:
+ 
+ 	ADSRConfig m_adsr;
+ 
+-	double m_amplitude = 0.1;
+-	double m_pitchShift = 0.0;
++	Array<LFO> m_lfoStates;
++
++	ModParameter m_amplitude = 0.1;
++	ModParameter m_pitchShift = 0.0;
+ 	int m_oscIndex = 0;
+ 
+ 	int m_unisonCount = 1;
+@@ -797,6 +952,16 @@ void Main()
+ 	adsr.sustainLevel = 1.0;
+ 	adsr.releaseTime = 0.01;
+ 
++	auto& lfoStates = synth.lfoStates();
++	lfoStates.resize(1);
++	lfoStates[0].setFunction(Sin);
++	lfoStates[0].setSeconds(0.1);
++	lfoStates[0].setLoop(true);
++
++	auto& pitchShift = synth.pitchShift();
++	pitchShift.setModIndex(0);
++	pitchShift.setRange(-0.5, 0.5);
++
+ 	bool isRunning = true;
+ 	bool requestRestart = false;
+ 
 ```
