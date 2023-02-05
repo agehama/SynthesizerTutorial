@@ -537,6 +537,10 @@ public:
 			}
 		}
 
+		m_pan.fetch(m_lfoStates);
+		sample.left *= static_cast<float>(cos(Math::HalfPi * m_pan.value));
+		sample.right *= static_cast<float>(sin(Math::HalfPi * m_pan.value));
+
 		m_amplitude.fetch(m_lfoStates);
 		return sample * static_cast<float>(m_amplitude.value / sqrt(m_unisonCount));
 	}
@@ -598,6 +602,7 @@ public:
 	void updateGUI(Vec2& pos)
 	{
 		SimpleGUI::Slider(U"amplitude : {:.2f}"_fmt(m_amplitude.value), m_amplitude.value, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
+		SimpleGUI::Slider(U"pan : {:.2f}"_fmt(m_pan.value), m_pan.value, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
 		SliderInt(U"oscillator : {}"_fmt(m_oscIndex), m_oscIndex, 0, 3, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
 
 		if (SimpleGUI::Slider(U"pitchShift : {:.2f}"_fmt(m_pitchShift.value), m_pitchShift.value, -24.0, 24.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth)
@@ -667,6 +672,15 @@ public:
 	ModParameter& amplitude()
 	{
 		return m_amplitude;
+	}
+
+	const ModParameter& pan() const
+	{
+		return m_pan;
+	}
+	ModParameter& pan()
+	{
+		return m_pan;
 	}
 
 	const ModParameter& pitchShift() const
@@ -778,6 +792,7 @@ private:
 	Array<LFO> m_lfoStates;
 
 	ModParameter m_amplitude = 0.1;
+	ModParameter m_pan = 0.5;
 	ModParameter m_pitchShift = 0.0;
 	int m_oscIndex = 0;
 

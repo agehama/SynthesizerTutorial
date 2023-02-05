@@ -347,6 +347,9 @@ public:
 			sample.right += w;
 		}
 
+		sample.left *= static_cast<float>(cos(Math::HalfPi * m_pan));
+		sample.right *= static_cast<float>(sin(Math::HalfPi * m_pan));
+
 		return sample * static_cast<float>(m_amplitude);
 	}
 
@@ -377,6 +380,7 @@ public:
 	void updateGUI(Vec2& pos)
 	{
 		SimpleGUI::Slider(U"amplitude : {:.2f}"_fmt(m_amplitude), m_amplitude, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
+		SimpleGUI::Slider(U"pan : {:.2f}"_fmt(m_pan), m_pan, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
 		SliderInt(U"oscillator : {}"_fmt(m_oscIndex), m_oscIndex, 0, 3, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
 
 		if (SimpleGUI::Slider(U"pitchShift : {:.2f}"_fmt(m_pitchShift), m_pitchShift, -24.0, 24.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth)
@@ -416,6 +420,15 @@ public:
 		m_amplitude = amplitude;
 	}
 
+	double pan() const
+	{
+		return m_pan;
+	}
+	void setPan(double pan)
+	{
+		m_pan = pan;
+	}
+
 	double pitchShift() const
 	{
 		return m_pitchShift;
@@ -432,6 +445,7 @@ private:
 	ADSRConfig m_adsr;
 
 	double m_amplitude = 0.1;
+	double m_pan = 0.5;
 	double m_pitchShift = 0.0;
 	int m_oscIndex = 0;
 };
