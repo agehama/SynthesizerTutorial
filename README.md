@@ -1589,7 +1589,7 @@
  
  	isRunning = false;
 ```
-### ３.１ ピッチシフト
+### ３.１ パンとピッチシフト
 ```diff
 @@ -326,12 +326,14 @@ public:
  		// リリースが終了したノートを削除する
@@ -1607,8 +1607,21 @@
  
  			const auto osc = OscWaveTables[m_oscIndex].get(noteState.m_phase, frequency);
  			noteState.m_phase += deltaT * frequency * 2_pi;
-@@ -377,6 +379,12 @@ public:
+@@ -345,6 +347,9 @@ public:
+ 			sample.right += w;
+ 		}
+ 
++		sample.left *= static_cast<float>(cos(Math::HalfPi * m_pan));
++		sample.right *= static_cast<float>(sin(Math::HalfPi * m_pan));
++
+ 		return sample * static_cast<float>(m_amplitude);
+ 	}
+ 
+@@ -375,8 +380,15 @@ public:
+ 	void updateGUI(Vec2& pos)
+ 	{
  		SimpleGUI::Slider(U"amplitude : {:.2f}"_fmt(m_amplitude), m_amplitude, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
++		SimpleGUI::Slider(U"pan : {:.2f}"_fmt(m_pan), m_pan, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
  		SliderInt(U"oscillator : {}"_fmt(m_oscIndex), m_oscIndex, 0, 3, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
  
 +		if (SimpleGUI::Slider(U"pitchShift : {:.2f}"_fmt(m_pitchShift), m_pitchShift, -24.0, 24.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth)
@@ -1620,10 +1633,19 @@
  		m_adsr.updateGUI(pos);
  	}
  
-@@ -408,6 +416,15 @@ public:
+@@ -408,6 +420,24 @@ public:
  		m_amplitude = amplitude;
  	}
  
++	double pan() const
++	{
++		return m_pan;
++	}
++	void setPan(double pan)
++	{
++		m_pan = pan;
++	}
++
 +	double pitchShift() const
 +	{
 +		return m_pitchShift;
@@ -1636,10 +1658,11 @@
  private:
  
  	std::multimap<int8_t, NoteState> m_noteState;
-@@ -415,6 +432,7 @@ private:
+@@ -415,6 +445,8 @@ private:
  	ADSRConfig m_adsr;
  
  	double m_amplitude = 0.1;
++	double m_pan = 0.5;
 +	double m_pitchShift = 0.0;
  	int m_oscIndex = 0;
  };
@@ -1684,7 +1707,7 @@
  	// 1サンプル波形を生成して返す
  	WaveSample renderSample()
  	{
-@@ -330,24 +349,31 @@ public:
+@@ -330,27 +349,34 @@ public:
  
  		// 入力中の波形を加算して書き込む
  		WaveSample sample(0, 0);
@@ -1720,12 +1743,15 @@
 +			}
  		}
  
+ 		sample.left *= static_cast<float>(cos(Math::HalfPi * m_pan));
+ 		sample.right *= static_cast<float>(sin(Math::HalfPi * m_pan));
+ 
 -		return sample * static_cast<float>(m_amplitude);
 +		return sample * static_cast<float>(m_amplitude / sqrt(m_unisonCount));
  	}
  
  	void noteOn(int8_t noteNumber, int8_t velocity)
-@@ -385,6 +411,16 @@ public:
+@@ -389,6 +415,16 @@ public:
  			m_pitchShift = Math::Round(m_pitchShift);
  		}
  
@@ -1742,7 +1768,7 @@
  		m_adsr.updateGUI(pos);
  	}
  
-@@ -425,8 +461,63 @@ public:
+@@ -438,8 +474,63 @@ public:
  		m_pitchShift = pitchShift;
  	}
  
@@ -1806,8 +1832,8 @@
  	std::multimap<int8_t, NoteState> m_noteState;
  
  	ADSRConfig m_adsr;
-@@ -434,6 +525,13 @@ private:
- 	double m_amplitude = 0.1;
+@@ -448,6 +539,13 @@ private:
+ 	double m_pan = 0.5;
  	double m_pitchShift = 0.0;
  	int m_oscIndex = 0;
 +
@@ -1820,7 +1846,7 @@
  };
  
  class AudioRenderer : public IAudioStream
-@@ -554,7 +652,7 @@ void Main()
+@@ -568,7 +666,7 @@ void Main()
  {
  	Window::Resize(1600, 900);
  
@@ -1829,7 +1855,7 @@
  	if (!midiDataOpt)
  	{
  		// ファイルが見つからない or 読み込みエラー
-@@ -564,14 +662,17 @@ void Main()
+@@ -578,14 +676,17 @@ void Main()
  	AudioVisualizer visualizer;
  	visualizer.setSplRange(-60, -30);
  	visualizer.setWindowType(AudioVisualizer::Hamming);
@@ -1850,7 +1876,7 @@
  
  	auto& adsr = synth.adsr();
  	adsr.attackTime = 0.01;
-@@ -623,8 +724,7 @@ void Main()
+@@ -637,8 +738,7 @@ void Main()
  
  			visualizer.updateFFT(fftInputSize);
  
@@ -1940,7 +1966,7 @@
  };
  
  float NoteNumberToFrequency(int8_t d)
-@@ -378,9 +390,24 @@ public:
+@@ -381,9 +393,24 @@ public:
  
  	void noteOn(int8_t noteNumber, int8_t velocity)
  	{
@@ -1968,7 +1994,7 @@
  	}
  
  	void noteOff(int8_t noteNumber)
-@@ -422,6 +449,20 @@ public:
+@@ -426,6 +453,20 @@ public:
  		}
  
  		m_adsr.updateGUI(pos);
@@ -1989,7 +2015,7 @@
  	}
  
  	void clear()
-@@ -491,6 +532,24 @@ public:
+@@ -504,6 +545,24 @@ public:
  		updateUnisonParam();
  	}
  
@@ -2014,7 +2040,7 @@
  private:
  
  	void updateUnisonParam()
-@@ -530,6 +589,9 @@ private:
+@@ -544,6 +603,9 @@ private:
  	double m_detune = 0;
  	double m_spread = 1.0;
  
@@ -2024,7 +2050,7 @@
  	std::array<float, MaxUnisonSize> m_detunePitch;
  	std::array<Float2, MaxUnisonSize> m_unisonPan;
  };
-@@ -652,7 +714,7 @@ void Main()
+@@ -666,7 +728,7 @@ void Main()
  {
  	Window::Resize(1600, 900);
  
@@ -2033,7 +2059,7 @@
  	if (!midiDataOpt)
  	{
  		// ファイルが見つからない or 読み込みエラー
-@@ -662,17 +724,17 @@ void Main()
+@@ -676,17 +738,17 @@ void Main()
  	AudioVisualizer visualizer;
  	visualizer.setSplRange(-60, -30);
  	visualizer.setWindowType(AudioVisualizer::Hamming);
@@ -2057,7 +2083,7 @@
  
  	auto& adsr = synth.adsr();
  	adsr.attackTime = 0.01;
-@@ -724,7 +786,8 @@ void Main()
+@@ -738,7 +800,8 @@ void Main()
  
  			visualizer.updateFFT(fftInputSize);
  
@@ -2094,7 +2120,7 @@
  
  			for (int d = 0; d < m_unisonCount; ++d)
  			{
-@@ -408,6 +422,12 @@ public:
+@@ -411,6 +425,12 @@ public:
  			noteState.m_envelope.reset(m_legato ? EnvGenerator::State::Sustain : EnvGenerator::State::Attack);
  			m_noteState.emplace(noteNumber, noteState);
  		}
@@ -2107,7 +2133,7 @@
  	}
  
  	void noteOff(int8_t noteNumber)
-@@ -454,12 +474,15 @@ public:
+@@ -458,12 +478,15 @@ public:
  
  		{
  			pos.y += SliderHeight;
@@ -2124,7 +2150,7 @@
  				pos.x -= marginWidth;
  			}
  		}
-@@ -550,6 +573,24 @@ public:
+@@ -563,6 +586,24 @@ public:
  		m_legato = legato;
  	}
  
@@ -2149,7 +2175,7 @@
  private:
  
  	void updateUnisonParam()
-@@ -591,9 +632,15 @@ private:
+@@ -605,9 +646,15 @@ private:
  
  	bool m_mono = false;
  	bool m_legato = false;
@@ -2165,7 +2191,7 @@
  };
  
  class AudioRenderer : public IAudioStream
-@@ -612,6 +659,12 @@ public:
+@@ -626,6 +673,12 @@ public:
  		m_midiData = midiData;
  	}
  
@@ -2178,7 +2204,7 @@
  	void bufferSample()
  	{
  		const double currentTime = 1.0 * m_readMIDIPos / SamplingFreq;
-@@ -722,10 +775,10 @@ void Main()
+@@ -736,10 +789,10 @@ void Main()
  	}
  
  	AudioVisualizer visualizer;
@@ -2192,7 +2218,7 @@
  	visualizer.setDrawArea(Scene::Rect());
  
  	std::shared_ptr<AudioRenderer> audioStream = std::make_shared<AudioRenderer>();
-@@ -735,6 +788,8 @@ void Main()
+@@ -749,6 +802,8 @@ void Main()
  	synth.setOscIndex(static_cast<int>(WaveForm::Sin));
  	synth.setMono(true);
  	synth.setLegato(true);
@@ -2201,7 +2227,7 @@
  
  	auto& adsr = synth.adsr();
  	adsr.attackTime = 0.01;
-@@ -743,11 +798,18 @@ void Main()
+@@ -757,11 +812,18 @@ void Main()
  	adsr.releaseTime = 0.01;
  
  	bool isRunning = true;
@@ -2220,7 +2246,7 @@
  			while (!audioStream->bufferCompleted())
  			{
  				audioStream->bufferSample();
-@@ -799,6 +861,11 @@ void Main()
+@@ -813,6 +875,11 @@ void Main()
  		{
  			audioStream->updateGUI(pos);
  		}
@@ -2392,9 +2418,15 @@
  
  		// 入力中の波形を加算して書き込む
  		WaveSample sample(0, 0);
-@@ -399,7 +537,8 @@ public:
+@@ -399,10 +537,12 @@ public:
  			}
  		}
+ 
+-		sample.left *= static_cast<float>(cos(Math::HalfPi * m_pan));
+-		sample.right *= static_cast<float>(sin(Math::HalfPi * m_pan));
++		m_pan.fetch(m_lfoStates);
++		sample.left *= static_cast<float>(cos(Math::HalfPi * m_pan.value));
++		sample.right *= static_cast<float>(sin(Math::HalfPi * m_pan.value));
  
 -		return sample * static_cast<float>(m_amplitude / sqrt(m_unisonCount));
 +		m_amplitude.fetch(m_lfoStates);
@@ -2402,7 +2434,7 @@
  	}
  
  	void noteOn(int8_t noteNumber, int8_t velocity)
-@@ -428,6 +567,15 @@ public:
+@@ -431,6 +571,15 @@ public:
  			m_startGlideFreq = m_currentFreq;
  			m_glideElapsed = 0;
  		}
@@ -2418,12 +2450,14 @@
  	}
  
  	void noteOff(int8_t noteNumber)
-@@ -449,13 +597,13 @@ public:
+@@ -452,14 +601,14 @@ public:
  
  	void updateGUI(Vec2& pos)
  	{
 -		SimpleGUI::Slider(U"amplitude : {:.2f}"_fmt(m_amplitude), m_amplitude, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
+-		SimpleGUI::Slider(U"pan : {:.2f}"_fmt(m_pan), m_pan, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
 +		SimpleGUI::Slider(U"amplitude : {:.2f}"_fmt(m_amplitude.value), m_amplitude.value, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
++		SimpleGUI::Slider(U"pan : {:.2f}"_fmt(m_pan.value), m_pan.value, 0.0, 1.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
  		SliderInt(U"oscillator : {}"_fmt(m_oscIndex), m_oscIndex, 0, 3, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth);
  
 -		if (SimpleGUI::Slider(U"pitchShift : {:.2f}"_fmt(m_pitchShift), m_pitchShift, -24.0, 24.0, Vec2{ pos.x, pos.y += SliderHeight }, LabelWidth, SliderWidth)
@@ -2435,7 +2469,7 @@
  		}
  
  		bool unisonUpdated = false;
-@@ -498,6 +646,11 @@ public:
+@@ -502,6 +651,11 @@ public:
  		return m_adsr;
  	}
  
@@ -2447,7 +2481,7 @@
  	int oscIndex() const
  	{
  		return m_oscIndex;
-@@ -507,22 +660,22 @@ public:
+@@ -511,31 +665,31 @@ public:
  		m_oscIndex = oscIndex;
  	}
  
@@ -2463,6 +2497,18 @@
 +		return m_amplitude;
  	}
  
+-	double pan() const
++	const ModParameter& pan() const
+ 	{
+ 		return m_pan;
+ 	}
+-	void setPan(double pan)
++	ModParameter& pan()
+ 	{
+-		m_pan = pan;
++		return m_pan;
+ 	}
+ 
 -	double pitchShift() const
 +	const ModParameter& pitchShift() const
  	{
@@ -2476,20 +2522,22 @@
  	}
  
  	int unisonCount() const
-@@ -622,8 +775,10 @@ private:
+@@ -635,9 +789,11 @@ private:
  
  	ADSRConfig m_adsr;
  
 -	double m_amplitude = 0.1;
+-	double m_pan = 0.5;
 -	double m_pitchShift = 0.0;
 +	Array<LFO> m_lfoStates;
 +
 +	ModParameter m_amplitude = 0.1;
++	ModParameter m_pan = 0.5;
 +	ModParameter m_pitchShift = 0.0;
  	int m_oscIndex = 0;
  
  	int m_unisonCount = 1;
-@@ -797,6 +952,16 @@ void Main()
+@@ -811,6 +967,16 @@ void Main()
  	adsr.sustainLevel = 1.0;
  	adsr.releaseTime = 0.01;
  
