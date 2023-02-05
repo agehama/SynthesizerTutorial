@@ -567,6 +567,15 @@ public:
 			m_startGlideFreq = m_currentFreq;
 			m_glideElapsed = 0;
 		}
+
+		if (!m_mono)
+		{
+			// LFO の再生状態をリセットする
+			for (auto& lfoState : m_lfoStates)
+			{
+				lfoState.reset();
+			}
+		}
 	}
 
 	void noteOff(int8_t noteNumber)
