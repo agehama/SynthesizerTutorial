@@ -2059,7 +2059,7 @@
  	if (!midiDataOpt)
  	{
  		// ファイルが見つからない or 読み込みエラー
-@@ -676,17 +738,17 @@ void Main()
+@@ -676,22 +738,23 @@ void Main()
  	AudioVisualizer visualizer;
  	visualizer.setSplRange(-60, -30);
  	visualizer.setWindowType(AudioVisualizer::Hamming);
@@ -2079,11 +2079,19 @@
 -	synth.setSpread(0.0);
 +	synth.setOscIndex(static_cast<int>(WaveForm::Sin));
 +	synth.setMono(true);
-+	synth.setLegato(true);
++	synth.setLegato(false);
++	synth.setAmplitude(0.4);
  
  	auto& adsr = synth.adsr();
  	adsr.attackTime = 0.01;
-@@ -738,7 +800,8 @@ void Main()
+-	adsr.decayTime = 0.0;
+-	adsr.sustainLevel = 1.0;
++	adsr.decayTime = 0.1;
++	adsr.sustainLevel = 0.2;
+ 	adsr.releaseTime = 0.01;
+ 
+ 	bool isRunning = true;
+@@ -738,7 +801,8 @@ void Main()
  
  			visualizer.updateFFT(fftInputSize);
  
@@ -2218,16 +2226,20 @@
  	visualizer.setDrawArea(Scene::Rect());
  
  	std::shared_ptr<AudioRenderer> audioStream = std::make_shared<AudioRenderer>();
-@@ -749,6 +802,8 @@ void Main()
+@@ -748,8 +801,10 @@ void Main()
+ 	auto& synth = audioStream->synth();
  	synth.setOscIndex(static_cast<int>(WaveForm::Sin));
  	synth.setMono(true);
- 	synth.setLegato(true);
+-	synth.setLegato(false);
+-	synth.setAmplitude(0.4);
++	synth.setLegato(true);
 +	synth.setGlide(true);
 +	synth.setGlideTime(0.1);
++	synth.setAmplitude(0.2);
  
  	auto& adsr = synth.adsr();
  	adsr.attackTime = 0.01;
-@@ -757,11 +812,18 @@ void Main()
+@@ -758,11 +813,18 @@ void Main()
  	adsr.releaseTime = 0.01;
  
  	bool isRunning = true;
@@ -2246,7 +2258,7 @@
  			while (!audioStream->bufferCompleted())
  			{
  				audioStream->bufferSample();
-@@ -813,6 +875,11 @@ void Main()
+@@ -814,6 +876,11 @@ void Main()
  		{
  			audioStream->updateGUI(pos);
  		}
@@ -2537,8 +2549,17 @@
  	int m_oscIndex = 0;
  
  	int m_unisonCount = 1;
-@@ -811,6 +967,16 @@ void Main()
- 	adsr.sustainLevel = 1.0;
+@@ -804,7 +960,7 @@ void Main()
+ 	synth.setLegato(true);
+ 	synth.setGlide(true);
+ 	synth.setGlideTime(0.1);
+-	synth.setAmplitude(0.2);
++	synth.amplitude().value = 0.2;
+ 
+ 	auto& adsr = synth.adsr();
+ 	adsr.attackTime = 0.01;
+@@ -812,6 +968,16 @@ void Main()
+ 	adsr.sustainLevel = 0.2;
  	adsr.releaseTime = 0.01;
  
 +	auto& lfoStates = synth.lfoStates();
