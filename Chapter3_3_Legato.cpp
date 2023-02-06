@@ -748,12 +748,13 @@ void Main()
 	auto& synth = audioStream->synth();
 	synth.setOscIndex(static_cast<int>(WaveForm::Sin));
 	synth.setMono(true);
-	synth.setLegato(true);
+	synth.setLegato(false);
+	synth.setAmplitude(0.4);
 
 	auto& adsr = synth.adsr();
 	adsr.attackTime = 0.01;
-	adsr.decayTime = 0.0;
-	adsr.sustainLevel = 1.0;
+	adsr.decayTime = 0.1;
+	adsr.sustainLevel = 0.2;
 	adsr.releaseTime = 0.01;
 
 	bool isRunning = true;

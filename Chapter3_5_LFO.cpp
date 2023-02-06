@@ -960,11 +960,12 @@ void Main()
 	synth.setLegato(true);
 	synth.setGlide(true);
 	synth.setGlideTime(0.1);
+	synth.amplitude().value = 0.2;
 
 	auto& adsr = synth.adsr();
 	adsr.attackTime = 0.01;
-	adsr.decayTime = 0.0;
-	adsr.sustainLevel = 1.0;
+	adsr.decayTime = 0.1;
+	adsr.sustainLevel = 0.2;
 	adsr.releaseTime = 0.01;
 
 	auto& lfoStates = synth.lfoStates();
